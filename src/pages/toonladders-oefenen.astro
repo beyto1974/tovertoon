@@ -1,0 +1,215 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Toonladders oefenen" description="Oefen voortekeningen omzetten naar toonladders en terug, met uitleg bij elk antwoord." wrap="720px">
+<main>
+  <header>
+    <h1>Toonladders oefenen</h1>
+    <p class="muted">Leer de voortekening omzetten naar de juiste toonladder en terug. Elk antwoord krijgt uitleg met de regel erbij.</p>
+  </header>
+
+  <section class="box bar" aria-label="Instellingen">
+    <div class="grp"><span class="lab">Oefening</span>
+      <div class="seg" id="mode" role="group" aria-label="Oefening">
+        <button type="button" data-m="sig" aria-pressed="true">Voortekening → naam</button>
+        <button type="button" data-m="count" aria-pressed="false">Naam → voortekening</button>
+        <button type="button" data-m="par" aria-pressed="false">Parallel</button>
+      </div></div>
+    <div class="grp"><span class="lab">Toonladder</span>
+      <div class="seg" id="qual" role="group" aria-label="Groot of klein">
+        <button type="button" data-q="maj" aria-pressed="true">Groot</button><button type="button" data-q="min" aria-pressed="false">Klein</button><button type="button" data-q="both" aria-pressed="false">Beide</button>
+      </div></div>
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do" aria-pressed="true">Do Re Mi</button><button type="button" data-n="abc" aria-pressed="false">ABC</button>
+      </div></div>
+  </section>
+
+  <section class="box q" aria-live="polite">
+    <h2 id="qt"></h2>
+    <div class="staffwrap" id="sw"><svg id="staff" viewBox="0 0 340 180" role="img" aria-label="Notenbalk met voortekening"></svg></div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+  </section>
+
+  <section class="stats" aria-label="Score">
+    <div class="stat"><small>Score</small><b id="sc">0/0</b></div>
+    <div class="stat"><small>Reeks</small><b id="st">0</b></div>
+    <div class="stat"><small>Beste reeks</small><b id="bs">0</b></div>
+  </section>
+</main>
+</Base>
+
+<style is:global>
+/* Layout: one column. Settings row, question card with staff, answer grid, feedback with the rule, running score. */
+main{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.brand{font:800 15px var(--display);color:var(--violet);letter-spacing:.02em}
+h1{font:800 clamp(32px,7vw,48px)/1.05 var(--display);letter-spacing:-.02em;margin:6px 0 10px;text-wrap:balance}
+p{margin:0}.muted{color:var(--muted)}
+.box{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:20px;min-width:0}
+.bar{display:flex;gap:12px 20px;flex-wrap:wrap;align-items:center}
+.grp{display:flex;flex-direction:column;gap:4px}
+.lab{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:var(--card)}
+.seg button{font:600 15px var(--body);height:40px;border:0;border-radius:0;padding:0 16px;background:transparent;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:hover{background:var(--sun);color:#1D1B3A}
+.seg button[aria-pressed="true"]:hover{background:var(--ink);color:var(--paper)}
+button:focus-visible{outline:3px solid var(--violet);outline-offset:3px}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--card);border:2px solid var(--ink);border-radius:16px;padding:6px 14px;min-width:78px}
+.stat small{display:block;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat b{font:800 24px/1.15 var(--display);font-variant-numeric:tabular-nums}
+.q{display:flex;flex-direction:column;gap:14px}
+.q h2{font:800 clamp(22px,4.5vw,28px)/1.15 var(--display);margin:0;text-wrap:balance}
+.staffwrap{overflow-x:auto}
+svg{display:block;width:100%;max-width:420px;min-width:300px;height:auto;margin:0 auto}
+.line{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.sym{font:700 34px/1 "Noto Music","Segoe UI Symbol","DejaVu Sans",sans-serif}
+.sym.f{fill:var(--flat)}.sym.s{fill:var(--sharp)}
+.hiddenstaff{height:0;overflow:hidden}
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.opts.many{grid-template-columns:repeat(5,1fr)}
+.opts button{font:800 22px var(--display);height:58px;background:var(--card);color:var(--ink);border:2px solid var(--ink);border-radius:16px;cursor:pointer;transition:transform .1s,background .15s;font-variant-numeric:tabular-nums}
+.opts.many button{font-size:19px;height:52px;padding:0}
+.opts button:hover:not(:disabled){background:var(--sun);color:#1D1B3A;transform:translateY(-2px)}
+.opts button:disabled{cursor:default}
+.opts button.right{background:var(--good);color:#fff;border-color:var(--ink)}
+.opts button.wrong{background:var(--bad);color:#fff;border-color:var(--ink)}
+.opts button:disabled:not(.right):not(.wrong){opacity:.5}
+.fb{display:flex;flex-direction:column;gap:10px}
+.fb .msg{font:800 24px var(--display)}
+.next{align-self:flex-start;background:var(--violet);color:var(--onviolet);border:2px solid var(--ink);border-radius:999px;font:800 18px var(--display);padding:10px 26px;cursor:pointer}
+.next:hover{filter:brightness(1.12)}
+@media (max-width:480px){.opts.many{grid-template-columns:repeat(4,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script is:inline>
+const $=id=>document.getElementById(id);
+const L=["C","D","E","F","G","A","B"], SOL=["Do","Re","Mi","Fa","Sol","La","Si"];
+const SH=["F","C","G","D","A","E","B"], FL=["B","E","A","D","G","C","F"];
+const MAJ_S=["C","G","D","A","E","B","F♯","C♯"], MIN_S=["A","E","B","F♯","C♯","G♯","D♯","A♯"];
+const MAJ_F=["C","F","B♭","E♭","A♭","D♭","G♭","C♭"], MIN_F=["A","D","G","C","F","B♭","E♭","A♭"];
+const SSTEP={F:8,C:5,G:9,D:6,A:3,E:7,B:4}, FSTEP={B:4,E:7,A:3,D:6,G:2,C:5,F:1};
+let names="do",mode="sig",qual="maj";
+try{const n=localStorage.getItem("to-names");if(n==="abc")names="abc";const m=localStorage.getItem("to-mode");if(["sig","count","par"].includes(m))mode=m;const q=localStorage.getItem("to-qual");if(["maj","min","both"].includes(q))qual=q}catch(e){}
+const nm=n=>names==="do"?SOL[L.indexOf(n[0])]+n.slice(1):n;
+const key=v=>v>=0?{maj:MAJ_S[v],min:MIN_S[v]}:{maj:MAJ_F[-v],min:MIN_F[-v]};
+const acc=v=>v>0?SH.slice(0,v).map(n=>n+"♯"):v<0?FL.slice(0,-v).map(n=>n+"♭"):[];
+const nmAcc=a=>nm(a[0])+a.slice(1);
+const Q={maj:"groot",min:"klein"};
+const unit=v=>Math.abs(v)===1?(v>0?"kruis":"mol"):(v>0?"kruisen":"mollen");
+const label=v=>v===0?"Geen":Math.abs(v)+" "+unit(v);
+const shortLabel=v=>v===0?"0":(v>0?"♯":"♭")+Math.abs(v);
+const rnd=n=>Math.floor(Math.random()*n);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+// ---- staff ----
+const ns="http://www.w3.org/2000/svg", gap=16, bottom=140;
+function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt)e.textContent=txt;return e}
+function accGlyph(s,flat,cx,cy){
+  const g=el("g",{fill:"none","stroke-linecap":"round","stroke-linejoin":"round",style:"stroke:var(--"+(flat?"flat":"sharp")+")"});
+  if(flat){
+    g.append(el("line",{x1:cx-4,x2:cx-4,y1:cy-24,y2:cy+7,"stroke-width":2.4}));
+    g.append(el("path",{d:`M${cx-4} ${cy+7} C${cx+10} ${cy+2} ${cx+11} ${cy-10} ${cx-4} ${cy-3}`,"stroke-width":2.4}));
+  }else{
+    g.append(el("line",{x1:cx-3.5,x2:cx-3.5,y1:cy-15,y2:cy+12,"stroke-width":1.8}));
+    g.append(el("line",{x1:cx+3.5,x2:cx+3.5,y1:cy-12,y2:cy+15,"stroke-width":1.8}));
+    g.append(el("line",{x1:cx-7,x2:cx+7,y1:cy-1,y2:cy-5,"stroke-width":3.6}));
+    g.append(el("line",{x1:cx-7,x2:cx+7,y1:cy+6,y2:cy+2,"stroke-width":3.6}));
+  }
+  s.append(g);
+}
+function draw(v){
+  const s=$("staff");s.innerHTML="";
+  for(let i=0;i<5;i++)s.append(el("line",{class:"line",x1:16,x2:324,y1:bottom-i*gap,y2:bottom-i*gap}));
+  s.append(el("line",{class:"line",x1:16,x2:16,y1:bottom-4*gap,y2:bottom}));
+  s.append(el("text",{x:22,y:bottom-gap+13,style:"font:400 72px 'Noto Music','Segoe UI Symbol','DejaVu Sans',serif;fill:var(--ink)"},"\u{1D11E}"));
+  acc(v).forEach((a,i)=>{
+    const flat=a.endsWith("♭"),step=(flat?FSTEP:SSTEP)[a[0]];
+    accGlyph(s,flat,96+i*32,bottom-step*gap/2);
+  });
+  if(v===0)s.append(el("text",{x:200,y:bottom-gap*2+5,"text-anchor":"middle",style:"font:600 15px var(--body);fill:var(--muted)"},"Geen voortekens"));
+}
+// ---- questions ----
+let q=null,score=0,rounds=0,streak=0,best=0,last="";
+try{best=+localStorage.getItem("to-best")||0}catch(e){}
+function pickQual(){return qual==="both"?(rnd(2)?"maj":"min"):qual}
+function neighbours(v,n){
+  const pool=[];for(let d=-3;d<=3;d++){const w=v+d;if(d!==0&&w>=-7&&w<=7)pool.push(w)}
+  return shuffle(pool).slice(0,n);
+}
+function make(){
+  let tries=0,cand;
+  do{
+    const v=rnd(15)-7,ql=pickQual();
+    cand={mode,v,ql,id:mode+v+ql};
+    tries++;
+  }while(cand.id===last&&tries<20);
+  last=cand.id;
+  cand.ask=cand.ql==="maj"?"min":"maj";
+  cand.opts=mode==="count"?[...Array(15)].map((_,i)=>i-7):shuffle([cand.v,...neighbours(cand.v,3)]);
+  return cand;
+}
+function explain(v,ql){
+  const k=key(v),s=[],list=acc(v).map(nmAcc).join(", ");
+  if(v===0)s.push("Geen voortekens: alleen witte toetsen.");
+  else if(v>0)s.push(`${label(v)}: ${list}. Het laatste kruis is ${nmAcc(SH[v-1]+"♯")}. Een halve toon hoger is ${nm(k.maj)}, dus ${nm(k.maj)} groot.`);
+  else if(v===-1)s.push(`Eén mol: ${nmAcc("B♭")}. Onthoud: één mol betekent ${nm("F")} groot.`);
+  else s.push(`${label(v)}: ${list}. De voorlaatste mol is ${nmAcc(FL[-v-2]+"♭")}, dus ${nm(k.maj)} groot.`);
+  s.push(ql==="min"?`Klein: ${nm(k.maj)} groot heeft dezelfde voortekening. Drie halve tonen lager is ${nm(k.min)} klein.`:`De parallelle kleine toonladder ligt drie halve tonen lager: ${nm(k.min)} klein.`);
+  return s.join(" ");
+}
+function optText(v){
+  if(q.mode==="sig")return nm(key(v)[q.ql])+" "+Q[q.ql];
+  if(q.mode==="par")return nm(key(v)[q.ask])+" "+Q[q.ask];
+  return shortLabel(v);
+}
+function render(){
+  const c=q,ql=c.ql;
+  if(c.mode==="sig"){$("qt").textContent=`Welke ${ql==="maj"?"grote":"kleine"} toonladder hoort bij deze voortekening?`;draw(c.v);$("sw").hidden=false}
+  else if(c.mode==="count"){$("qt").textContent=`Hoeveel voortekens heeft ${nm(key(c.v)[ql])} ${Q[ql]}?`;$("sw").hidden=true}
+  else{$("qt").textContent=`Wat is de parallelle ${c.ask==="maj"?"grote":"kleine"} toonladder van ${nm(key(c.v)[ql])} ${Q[ql]}?`;$("sw").hidden=true}
+  const o=$("opts");o.innerHTML="";o.className="opts"+(c.mode==="count"?" many":"");
+  c.opts.forEach(v=>{
+    const b=document.createElement("button");b.type="button";b.textContent=optText(v);b.dataset.v=v;
+    if(c.mode==="count")b.setAttribute("aria-label",label(v));
+    b.onclick=()=>answer(v);o.append(b);
+  });
+  $("fb").innerHTML="";
+  if(c.done)showResult();
+}
+function answer(v){
+  if(q.done)return;q.done=true;q.picked=v;rounds++;
+  if(v===q.v){score++;streak++;best=Math.max(best,streak);try{localStorage.setItem("to-best",best)}catch(e){}}else streak=0;
+  showResult();stats();
+}
+function showResult(){
+  const ok=q.picked===q.v;
+  [...$("opts").children].forEach(b=>{b.disabled=true;if(+b.dataset.v===q.v)b.classList.add("right");else if(+b.dataset.v===q.picked)b.classList.add("wrong")});
+  const k=key(q.v);
+  let head;
+  if(ok)head="Goed zo!";
+  else if(q.mode==="sig")head=`Het was ${nm(k[q.ql])} ${Q[q.ql]}.`;
+  else if(q.mode==="count")head=`${nm(k[q.ql])} ${Q[q.ql]} heeft ${q.v===0?"geen voortekens":label(q.v)}.`;
+  else head=`Het was ${nm(k[q.ask])} ${Q[q.ask]}.`;
+  $("sw").hidden=false;draw(q.v);
+  const f=$("fb");f.innerHTML="";
+  const m=document.createElement("div");m.className="msg";m.style.color=ok?"var(--good)":"var(--bad)";m.textContent=head;
+  const e=document.createElement("p");e.className="muted";e.textContent=explain(q.v,q.ql);
+  const n=document.createElement("button");n.className="next";n.type="button";n.textContent="Volgende  →";n.onclick=next;
+  f.append(m,e,n);n.focus({preventScroll:true});
+}
+function stats(){$("sc").textContent=score+"/"+rounds;$("st").textContent=streak;$("bs").textContent=best}
+function next(){q=make();render()}
+function seg(id,attr,val,fn){
+  $(id).querySelectorAll("button").forEach(b=>{b.setAttribute("aria-pressed",b.dataset[attr]===val);b.onclick=()=>fn(b.dataset[attr])});
+}
+function sync(){
+  seg("mode","m",mode,m=>{mode=m;save();sync();next()});
+  seg("qual","q",qual,v=>{qual=v;save();sync();next()});
+  seg("names","n",names,v=>{names=v;save();sync();render()});
+}
+function save(){try{localStorage.setItem("to-names",names);localStorage.setItem("to-mode",mode);localStorage.setItem("to-qual",qual)}catch(e){}}
+sync();stats();next();
+if(document.fonts&&document.fonts.load)document.fonts.load("72px 'Noto Music'","\u{1D11E}").then(()=>{if(!$("sw").hidden)draw(q.v)}).catch(()=>{});
+</script>

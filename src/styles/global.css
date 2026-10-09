@@ -1,0 +1,92 @@
+/* Shared design tokens and site chrome. Page-specific styles live next to each page. */
+:root {
+  --paper: #fff8e1;
+  --card: #fffdf4;
+  --ink: #1d1b3a;
+  --muted: #6f6b8c;
+  --violet: #5b3df5;
+  --sun: #ffd13f;
+  --hover: #eee8ff;
+  --onviolet: #ffffff;
+  --good: #1fa55b;
+  --bad: #e5483d;
+  --flat: #2d6cdf;
+  --sharp: #e5483d;
+  --display: "Bricolage Grotesque Variable", "Trebuchet MS", sans-serif;
+  --body: "DM Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #17152e;
+    --card: #211f3f;
+    --ink: #f6f1e0;
+    --muted: #a5a1c6;
+    --violet: #8f7bff;
+    --hover: #2e2a5c;
+    --onviolet: #17152e;
+    --good: #35c77a;
+    --bad: #ff6a5e;
+    --flat: #6fa0ff;
+    --sharp: #ff6a5e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #17152e;
+  --card: #211f3f;
+  --ink: #f6f1e0;
+  --muted: #a5a1c6;
+  --violet: #8f7bff;
+  --hover: #2e2a5c;
+  --onviolet: #17152e;
+  --good: #35c77a;
+  --bad: #ff6a5e;
+  --flat: #6fa0ff;
+  --sharp: #ff6a5e;
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 17px/1.55 var(--body);
+  padding-inline: 16px;
+  padding-block: 32px;
+}
+[hidden] { display: none !important; }
+
+.site-nav {
+  max-width: var(--wrap, 820px);
+  margin: 0 auto 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  justify-content: space-between;
+}
+.site-nav .brand {
+  font: 800 20px var(--display);
+  color: var(--violet);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.site-nav ul { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.site-nav li a {
+  display: block;
+  font: 600 15px var(--body);
+  color: var(--ink);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+.site-nav li a:hover { background: var(--sun); color: #1d1b3a; border-color: var(--ink); }
+.site-nav li a[aria-current="page"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.site-nav a:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+.site-foot {
+  max-width: var(--wrap, 820px);
+  margin: 40px auto 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.site-foot a { color: inherit; }

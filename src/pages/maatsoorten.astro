@@ -1,0 +1,329 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Maatsoorten" description="Hoor en zie hoe 2/4, 3/4, 4/4, 6/8 en andere maten tellen en zich laten opdelen." wrap="820px">
+<main>
+  <header>
+    <h1>Maatsoorten: tellen en verdelen</h1>
+    <p class="muted">Een maatsoort zegt hoeveel tellen er in een maat zitten en hoe lang een tel duurt. Kies er een, druk op spelen en kijk hoe de maat zich laat opdelen. De sterkste tel is paars, een middelsterke tel is lichtpaars.</p>
+  </header>
+
+  <section class="box tool" aria-label="Maatsoort verkennen">
+    <div class="chips" id="sigs" role="group" aria-label="Maatsoort"></div>
+    <div class="top">
+      <div class="sig" id="sig" aria-hidden="true"><span></span><span></span></div>
+      <div class="info"><h2 id="name"></h2><p id="feel"></p><p class="muted" id="ex"></p></div>
+    </div>
+    <div id="grpwrap" hidden><div class="lab">Groepering</div><div class="chips small" id="grps" role="group" aria-label="Groepering"></div></div>
+    <div class="grid" id="grid">
+      <div><div class="lab" id="l1">Tellen</div><div class="row" id="rp"></div></div>
+      <div id="subwrap"><div class="lab" id="l2">Onderverdeling</div><div class="row" id="rs"></div></div>
+    </div>
+    <div class="controls">
+      <button class="play" id="play" type="button">▶ Spelen</button>
+      <div class="tempo"><input type="range" id="bpm" min="30" max="240" value="100" aria-label="Tempo"><output id="bpmv" for="bpm"></output></div>
+      <label class="chk"><input type="checkbox" id="subclick" checked> Onderverdeling hoorbaar</label>
+    </div>
+  </section>
+
+  <section class="box">
+    <h2>Zo kun je één maat opdelen</h2>
+    <p class="muted" id="splitintro"></p>
+    <div class="splits" id="splits"></div>
+  </section>
+
+  <section class="box">
+    <h2>Combinaties binnen één tel</h2>
+    <p class="muted">Elke kaart vult precies één tel op een andere manier. Kies hoe lang een tel is en druk op spelen om het ritme te horen. Het tempo komt van de schuif bij de metronome.</p>
+    <div class="chips" style="margin-top:12px" id="cmode" role="group" aria-label="Lengte van een tel">
+      <button type="button" data-m="simple" aria-pressed="true">Tel = kwartnoot (4/4, 3/4)</button>
+      <button type="button" data-m="compound" aria-pressed="false">Tel = kwartnoot met punt (6/8, 9/8)</button>
+    </div>
+    <div class="combos" id="combos"></div>
+  </section>
+
+  <section>
+    <h2 style="margin-bottom:12px">Zelfde lengte, andere indeling</h2>
+    <div class="cmp">
+      <div class="box"><b>3/4</b><div class="row" id="c34"></div><p class="muted">Zes achtsten als 2 + 2 + 2: drie tellen die je in tweeën deelt.</p><div><button type="button" data-play="3/4">▶ Speel 3/4</button></div></div>
+      <div class="box"><b>6/8</b><div class="row" id="c68"></div><p class="muted">Dezelfde zes achtsten als 3 + 3: twee tellen die je in drieën deelt.</p><div><button type="button" data-play="6/8">▶ Speel 6/8</button></div></div>
+    </div>
+  </section>
+
+  <section class="box">
+    <h2>Zo lees je de cijfers</h2>
+    <ul>
+      <li><b>Bovenste cijfer:</b> hoeveel tellen (of achtsten) er in een maat zitten.</li>
+      <li><b>Onderste cijfer:</b> welke notenwaarde één tel is: 2 is een halve noot, 4 een kwartnoot, 8 een achtste noot.</li>
+      <li><b>Enkelvoudig</b> (2/4, 3/4, 4/4): elke tel deelt zich in twee. Tel: 1 en 2 en.</li>
+      <li><b>Samengesteld</b> (6/8, 9/8, 12/8): elke tel is een kwartnoot met punt en deelt zich in drie. Tel: 1 la li 2 la li.</li>
+      <li><b>Onregelmatig</b> (5/4, 7/8): tellen worden in ongelijke groepen van twee en drie verdeeld. Die groepering hoor je in het ritme.</li>
+    </ul>
+  </section>
+</main>
+</Base>
+
+<style is:global>
+/* Layout: one column. Signature picker + live bar (counts, subdivision) on top, note-value splits below, 3/4 vs 6/8 comparison, reading guide. */
+main{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.brand{font:800 15px var(--display);color:var(--violet);letter-spacing:.02em}
+h1{font:800 clamp(32px,7vw,50px)/1.05 var(--display);letter-spacing:-.02em;margin:6px 0 10px;text-wrap:balance}
+h2{font:800 24px/1.15 var(--display);margin:0 0 8px;text-wrap:balance}
+p{margin:0}.muted{color:var(--muted)}
+.box{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:20px;min-width:0}
+.tool{display:flex;flex-direction:column;gap:18px}
+button{font:600 15px var(--body);color:var(--ink);background:var(--card);border:2px solid var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+button:hover{background:var(--sun);color:#1D1B3A}
+button:focus-visible,input:focus-visible{outline:3px solid var(--violet);outline-offset:3px}
+button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{font:800 18px var(--display);font-variant-numeric:tabular-nums;padding:6px 16px}
+.chips.small button{font:600 14px var(--body)}
+.top{display:flex;gap:20px;align-items:center}
+.sig{font:800 64px/.86 var(--display);text-align:center;min-width:64px;font-variant-numeric:tabular-nums}
+.sig span{display:block}.sig span+span{border-top:5px solid var(--ink);padding-top:6px;margin-top:6px}
+.info{min-width:0;display:flex;flex-direction:column;gap:4px}
+.info h2{margin:0}
+.lab{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.grid{position:relative;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:3px;min-width:0}
+.cell{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;height:48px;border:2px solid var(--ink);border-radius:12px;background:var(--card);font:800 18px var(--display);overflow:hidden;white-space:nowrap;transition:background .06s}
+.cell.a3{background:var(--violet);color:var(--onviolet)}
+.cell.a2{background:var(--hover)}
+.cell.sub{font:600 14px var(--body);color:var(--muted);height:38px}
+.cell.sub.a3{color:var(--onviolet)}
+.cell.sub.a2{color:var(--ink)}
+.cell.on,.cell.sub.on{background:var(--sun);color:#1D1B3A;border-color:var(--ink)}
+.cell.g{font:400 22px/1 "Noto Music","Segoe UI Symbol","DejaVu Sans",serif}
+.cell.g.a3{color:var(--onviolet)}
+.row.hide{display:none}
+.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.play{background:var(--violet);color:var(--onviolet);border-color:var(--ink);font:800 17px var(--display);padding:10px 24px}
+.play:hover{background:var(--violet);color:var(--onviolet);filter:brightness(1.12)}
+.tempo{display:flex;align-items:center;gap:10px;flex:1 1 220px;min-width:0}
+.tempo input{flex:1;min-width:0;accent-color:var(--violet)}
+.tempo output{font:600 15px var(--body);min-width:8ch;font-variant-numeric:tabular-nums}
+label.chk{display:flex;gap:8px;align-items:center;font-size:15px;cursor:pointer}
+label.chk input{width:18px;height:18px;accent-color:var(--violet)}
+.splits{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.splits .row{margin-top:2px}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.cmp .box{display:flex;flex-direction:column;gap:10px}
+.cmp .cell{height:40px;font-size:15px}
+.cmp .gap{margin-left:14px}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:480px){.top{flex-direction:column;align-items:flex-start}.sig{font-size:52px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.combos{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:14px}
+.combo{border:2px solid var(--ink);border-radius:16px;background:var(--card);padding:10px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.combo svg{width:100%;height:auto;display:block}
+.combo .nm{font:600 14px/1.25 var(--body);text-align:center;min-height:2.5em;display:flex;align-items:center}
+.combo button{font-size:14px;padding:4px 14px}
+.ink{fill:var(--ink);stroke:none}.inks{stroke:var(--ink);fill:none;stroke-linecap:round}
+.head{transition:fill .05s}.head.on{fill:var(--violet)}
+.combo .dashline{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:3 4}
+</style>
+<script is:inline>
+const $=id=>document.getElementById(id);
+// Time is counted in sixteenths. groups = group sizes in pulses; fine = subdivision cell length.
+const SIGS={
+ "2/4":{n:2,d:4,pulse:[4,4],groups:[[2]],fine:2,bpm:100,name:"2/4: mars",feel:"Twee kwartnoten per maat: sterk, zwak. Regelmatig als stappen.",ex:"Marsen, polka's, veel kinderliedjes."},
+ "3/4":{n:3,d:4,pulse:[4,4,4],groups:[[3]],fine:2,bpm:100,name:"3/4: wals",feel:"Drie kwartnoten per maat: sterk, zwak, zwak. Draaiend, zoals een wals.",ex:"Walsen, menuetten."},
+ "4/4":{n:4,d:4,pulse:[4,4,4,4],groups:[[2,2]],fine:2,bpm:100,name:"4/4: de standaardmaat",feel:"Vier kwartnoten per maat: sterk, zwak, middelsterk, zwak.",ex:"Bijna alle pop, rock en dance."},
+ "2/2":{n:2,d:2,pulse:[8,8],groups:[[2]],fine:4,bpm:70,name:"2/2: alla breve",feel:"Twee halve noten per maat. Je voelt twee brede tellen in plaats van vier smalle.",ex:"Marsen, koralen, snelle barokmuziek."},
+ "3/8":{n:3,d:8,pulse:[2,2,2],groups:[[3]],fine:1,bpm:150,name:"3/8: snelle drie",feel:"Drie achtsten per maat, meestal zo snel dat je één klemtoon per maat voelt.",ex:"Scherzo's, snelle dansen."},
+ "5/4":{n:5,d:4,pulse:[4,4,4,4,4],groups:[[3,2],[2,3]],fine:2,bpm:130,restart:true,name:"5/4: vijf tellen",feel:"Vijf kwartnoten, verdeeld in 3 + 2 of 2 + 3. Het ritme wipt door de ongelijke groepen.",ex:"Take Five (3 + 2)."},
+ "6/8":{n:6,d:8,pulse:[6,6],groups:[[2]],fine:2,bpm:60,name:"6/8: twee groepen van drie",feel:"Zes achtsten, gevoeld als twee tellen van drie. Wiegend.",ex:"Wiegeliedjes, jigs, tarantella."},
+ "9/8":{n:9,d:8,pulse:[6,6,6],groups:[[3]],fine:2,bpm:60,name:"9/8: drie groepen van drie",feel:"Negen achtsten, gevoeld als drie tellen van drie.",ex:"Slip jigs, veel romantische stukken."},
+ "12/8":{n:12,d:8,pulse:[6,6,6,6],groups:[[2,2]],fine:2,bpm:50,name:"12/8: vier groepen van drie",feel:"Twaalf achtsten, gevoeld als vier tellen van drie. Zwaar en zwierig.",ex:"Bluesballads, doowop."},
+ "7/8":{n:7,d:8,pulse:[2,2,2,2,2,2,2],groups:[[2,2,3],[3,2,2],[2,3,2]],fine:2,bpm:190,restart:true,name:"7/8: onregelmatig",feel:"Zeven achtsten in groepen van twee en drie. Kies hieronder waar de drie staat.",ex:"Balkanmuziek, progrock."}
+};
+const NOTE={16:["𝅝","hele noot"],12:["𝅗𝅥.","halve met punt"],8:["𝅗𝅥","halve noot"],6:["𝅘𝅥.","kwartnoot met punt"],4:["𝅘𝅥","kwartnoot"],3:["𝅘𝅥𝅮.","achtste met punt"],2:["𝅘𝅥𝅮","achtste noot"],1:["𝅘𝅥𝅯","zestiende noot"]};
+const PLURAL={16:"hele noot",12:"halve noten met punt",8:"halve noten",6:"kwartnoten met punt",4:"kwartnoten",3:"achtsten met punt",2:"achtsten",1:"zestienden"};
+let key="4/4", gi=0, playing=false, bpm=100;
+try{const k=localStorage.getItem("mt-sig");if(SIGS[k])key=k}catch(e){}
+const model=()=>{
+  const S=SIGS[key],g=S.groups[Math.min(gi,S.groups.length-1)];
+  const acc=[];let i=0;
+  g.forEach((sz,gidx)=>{for(let j=0;j<sz;j++)acc.push(j===0?(gidx===0?3:2):1);i+=sz});
+  // groups sized in pulses; expand when they list group sizes of the bar (2/4 [2] etc.)
+  const total=S.pulse.reduce((a,b)=>a+b,0);
+  // 6/8-style: [2] means 2 pulses in one group
+  const a2=[];let idx=0;
+  g.forEach((sz,gidx)=>{for(let j=0;j<sz;j++)a2.push({acc:j===0?(gidx===0?3:2):1,pos:j+1})});
+  const compound=S.pulse[0]===6;
+  return {S,total,acc:a2,compound};
+};
+function cellsOfPulse(len,fine,n){
+  const c=len/fine;return c===3?[n,"la","li"]:c===2?[n,"en"]:c===1?[n]:[n,...Array(c-1).fill("·")];
+}
+function build(){
+  const {S,total,acc}=model();
+  document.querySelectorAll("#sigs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===key));
+  $("sig").children[0].textContent=S.n;$("sig").children[1].textContent=S.d;
+  $("name").textContent=S.name;$("feel").textContent=S.feel;$("ex").textContent="Je hoort het in: "+S.ex;
+  // grouping chips
+  $("grpwrap").hidden=S.groups.length<2;
+  if(S.groups.length>1)$("grps").innerHTML=S.groups.map((g,i)=>`<button type="button" data-g="${i}" aria-pressed="${i===gi}">${g.join(" + ")}</button>`).join("");
+  document.querySelectorAll("#grps button").forEach(b=>b.onclick=()=>{gi=+b.dataset.g;build()});
+  // counts row
+  const rp=$("rp"),rs=$("rs");rp.innerHTML="";rs.innerHTML="";
+  let pos=0;window.CELLS=[];
+  S.pulse.forEach((len,i)=>{
+    const a=acc[i], lbl=S.restart?a.pos:(model().compound?i+1:i+1);
+    const c=document.createElement("div");c.className="cell a"+a.acc;c.style.flexGrow=len;c.textContent=lbl;
+    c.dataset.s=pos;c.dataset.e=pos+len;rp.appendChild(c);
+    const labs=cellsOfPulse(len,S.fine,lbl);
+    labs.forEach((t,j)=>{const d=document.createElement("div");d.className="cell sub"+(j===0?" a"+a.acc:"");
+      d.style.flexGrow=S.fine;d.textContent=t;d.dataset.s=pos+j*S.fine;d.dataset.e=pos+(j+1)*S.fine;
+      if(j===0){d.style.color="";d.classList.add("head")}rs.appendChild(d)});
+    pos+=len;
+  });
+  $("l1").textContent=model().compound?"Tellen (elke tel is een kwartnoot met punt)":"Tellen";
+  $("bpm").value=S.bpm;bpm=S.bpm;$("bpmv").textContent=bpm+" tellen/min";
+  splits();
+}
+function splits(){
+  const {S,total}=model();
+  $("splitintro").textContent=`Deze maat duurt ${total} zestiende noten. Elke rij hieronder vult precies één maat met één soort notenwaarde.`;
+  const host=$("splits");host.innerHTML="";
+  [16,12,8,6,4,3,2,1].filter(u=>total%u===0).forEach(u=>{
+    const n=total/u, wrap=document.createElement("div");
+    wrap.innerHTML=`<div class="lab">${n} ${n===1?NOTE[u][1]:PLURAL[u]}</div>`;
+    const row=document.createElement("div");row.className="row";
+    for(let i=0;i<n;i++){const c=document.createElement("div");c.className="cell g"+(i===0?" a3":"");c.style.flexGrow=u;c.textContent=NOTE[u][0];c.dataset.s=i*u;c.dataset.e=(i+1)*u;row.appendChild(c)}
+    wrap.appendChild(row);host.appendChild(wrap);
+  });
+}
+// ---- audio + playback ----
+let ctx=null,timer=null,nextT=0,slot=0,queue=[],raf=0;
+function click(t,level){
+  const o=ctx.createOscillator(),g=ctx.createGain(),f=[520,760,980,1300][level];
+  o.frequency.value=f;o.type="square";
+  const v=[.05,.12,.18,.28][level];
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.07);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.08);
+}
+function levelAt(s){ // 3 strong,2 medium,1 weak count,0 subdivision, -1 silent
+  const {S,acc}=model();let pos=0;
+  for(let i=0;i<S.pulse.length;i++){
+    if(s===pos)return acc[i].acc;
+    if(s>pos&&s<pos+S.pulse[i]){return (s-pos)%S.fine===0?0:-1}
+    pos+=S.pulse[i];
+  }
+  return -1;
+}
+function schedule(){
+  const {total,S}=model();const sd=60/bpm/S.pulse[0];
+  while(nextT<ctx.currentTime+.15){
+    const l=levelAt(slot);
+    if(l>0||(l===0&&$("subclick").checked))click(nextT,l);
+    queue.push({t:nextT,s:slot});
+    nextT+=sd;slot=(slot+1)%total;
+  }
+}
+function paint(){
+  if(!playing)return;
+  let cur=null;
+  while(queue.length&&queue[0].t<=ctx.currentTime){cur=queue.shift()}
+  if(cur!==null)light(cur.s);
+  raf=requestAnimationFrame(paint);
+}
+function light(s){
+  document.querySelectorAll(".cell[data-s]").forEach(c=>c.classList.toggle("on",s!==null&&+c.dataset.s<=s&&s<+c.dataset.e));
+}
+function start(){
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
+  playing=true;slot=0;queue=[];nextT=ctx.currentTime+.08;
+  schedule();timer=setInterval(schedule,25);raf=requestAnimationFrame(paint);
+  $("play").textContent="■ Stoppen";
+}
+function stop(){playing=false;clearInterval(timer);cancelAnimationFrame(raf);light(null);$("play").textContent="▶ Spelen"}
+$("play").onclick=()=>playing?stop():start();
+$("bpm").oninput=e=>{bpm=+e.target.value;$("bpmv").textContent=bpm+" tellen/min"};
+function pick(k,go){stop();key=k;gi=0;try{localStorage.setItem("mt-sig",k)}catch(e){}build();setCm(model().compound?"compound":"simple");if(go)start()}
+$("sigs").innerHTML=Object.keys(SIGS).map(k=>`<button type="button" data-k="${k}">${k}</button>`).join("");
+document.querySelectorAll("#sigs button").forEach(b=>b.onclick=()=>pick(b.dataset.k));
+document.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{pick(b.dataset.play,true);window.scrollTo({top:0,behavior:"smooth"})});
+function cmp(id,sizes){const r=$(id);sizes.forEach((sz,gi)=>{for(let j=0;j<sz;j++){const c=document.createElement("div");c.className="cell"+(j===0?" a3":"");c.style.flexGrow=1;c.textContent=j===0?gi+1:"";if(j===sz-1&&gi<sizes.length-1)c.style.marginRight="12px";r.appendChild(c)}})}
+cmp("c34",[2,2,2]);cmp("c68",[3,3]);
+// ---- combinations inside one beat ----
+let cm="simple",cto=[];
+const SG={1:"zestiende",2:"achtste",3:"achtste met punt",4:"kwartnoot"}, SP={1:"zestienden",2:"achtsten",3:"achtsten met punt",4:"kwartnoten"};
+const CG={1:"achtste",2:"kwartnoot",3:"kwartnoot met punt"}, CP={1:"achtsten",2:"kwartnoten",3:"kwartnoten met punt"};
+function comps(total,parts){if(total===0)return [[]];const out=[];parts.forEach(p=>{if(p<=total)comps(total-p,parts).forEach(r=>out.push([p,...r]))});return out}
+const NS="http://www.w3.org/2000/svg";
+function E(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e}
+function levelOf(d){return cm==="simple"?({1:2,2:1,3:1,4:0})[d]:(d===1?1:0)}
+function comboName(list){
+  const G=cm==="simple"?SG:CG,P=cm==="simple"?SP:CP,out=[];
+  for(let i=0;i<list.length;){let j=i;while(j<list.length&&list[j]===list[i])j++;const c=j-i;out.push(c>1?c+" "+P[list[i]]:G[list[i]]);i=j}
+  return out.join(" + ");
+}
+function drawCombo(list){
+  const L=cm==="simple"?4:3, svg=E("svg",{viewBox:"0 0 200 108",role:"img","aria-label":comboName(list)});
+  const X0=32,W=136,HY=84,TOP=26; let on=0;const xs=[],heads=[];
+  list.forEach(d=>{xs.push(X0+on/L*W);on+=d});
+  const lv=list.map(levelOf), n=list.length;
+  // runs of beamed notes
+  for(let i=0;i<n;){
+    if(lv[i]===0){i++;continue}
+    let j=i;while(j<n&&lv[j]>0)j++;
+    const run=[];for(let k=i;k<j;k++)run.push(k);
+    if(run.length>=2){
+      svg.append(E("rect",{class:"ink",x:xs[i]+5,y:TOP,width:xs[j-1]-xs[i]+3,height:6}));
+      // secondary beams
+      for(let k=i;k<j;){
+        if(lv[k]<2){k++;continue}
+        let m=k;while(m<j&&lv[m]>=2)m++;
+        if(m-k>=2)svg.append(E("rect",{class:"ink",x:xs[k]+5,y:TOP+10,width:xs[m-1]-xs[k]+3,height:6}));
+        else{const stubL=k>i;svg.append(E("rect",{class:"ink",x:stubL?xs[k]-4:xs[k]+5,y:TOP+10,width:9,height:6}))}
+        k=m;
+      }
+    }else{
+      const x=xs[i]+6.5;svg.append(E("path",{class:"inks","stroke-width":3.2,d:`M${x} ${TOP} q 14 10 9 26`}));
+    }
+    i=j;
+  }
+  list.forEach((d,i)=>{
+    const x=xs[i];
+    svg.append(E("line",{class:"inks","stroke-width":2.6,x1:x+6.4,x2:x+6.4,y1:HY-2,y2:TOP}));
+    const h=E("ellipse",{class:"ink head",cx:x,cy:HY,rx:8,ry:5.6,transform:`rotate(-20 ${x} ${HY})`});
+    svg.append(h);heads.push(h);
+    if(d===3&&cm==="simple"||d===3&&cm==="compound")svg.append(E("circle",{class:"ink",cx:x+15,cy:HY-5,r:2.6}));
+  });
+  return {svg,heads,xs};
+}
+function buildCombos(){
+  const host=$("combos");host.innerHTML="";
+  const list=cm==="simple"?comps(4,[4,3,2,1]):comps(3,[3,2,1]);
+  list.forEach(c=>{
+    const card=document.createElement("div");card.className="combo";
+    const d=drawCombo(c);card.append(d.svg);
+    const nm=document.createElement("div");nm.className="nm";nm.textContent=comboName(c);card.append(nm);
+    const b=document.createElement("button");b.type="button";b.textContent="▶ Speel";b.onclick=()=>playCombo(c,d.heads);card.append(b);
+    host.append(card);
+  });
+}
+function playCombo(list,heads){
+  stop();cto.forEach(clearTimeout);cto=[];document.querySelectorAll(".head.on").forEach(h=>h.classList.remove("on"));
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
+  const L=cm==="simple"?4:3, beat=60/bpm, u=beat/L, t0=ctx.currentTime+.06;
+  for(let rep=0;rep<2;rep++){
+    click(t0+rep*beat,rep===0?3:1);
+    let on=0;
+    list.forEach((d,i)=>{
+      const t=t0+rep*beat+on*u;on+=d;
+      const o=ctx.createOscillator(),g=ctx.createGain();o.type="triangle";o.frequency.value=660;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.008);g.gain.exponentialRampToValueAtTime(.001,t+Math.min(.35,d*u));
+      o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.4);
+      cto.push(setTimeout(()=>{heads.forEach(h=>h.classList.remove("on"));heads[i].classList.add("on")},(t-ctx.currentTime)*1000));
+    });
+  }
+  cto.push(setTimeout(()=>heads.forEach(h=>h.classList.remove("on")),2*beat*1000+150));
+}
+function setCm(m){cm=m;document.querySelectorAll("#cmode button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m===m));buildCombos()}
+document.querySelectorAll("#cmode button").forEach(b=>b.onclick=()=>setCm(b.dataset.m));
+setCm(model().compound?"compound":"simple");
+build();
+</script>

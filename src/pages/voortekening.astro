@@ -1,0 +1,174 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Voortekening" description="Leer een voortekening lezen: kruisen, mollen, groot en klein, met een notenbalk om mee te spelen." wrap="820px">
+<main>
+  <header>
+    <h1>Lees een voortekening in vijf seconden</h1>
+    <p class="muted">Kruisen of mollen aan het begin van een notenbalk vertellen je de toonsoort. Sleep de schuif en leer daarna de twee trucjes. Kies hieronder of noten als letters of als Do–Re–Mi staan. Groot is majeur, klein is mineur.</p>
+    <div class="seg" role="group" aria-label="Notennamen"><button type="button" id="nDO" aria-pressed="true">Do Re Mi</button><button type="button" id="nABC" aria-pressed="false">ABC</button></div>
+  </header>
+
+  <section class="box tool" aria-label="Voortekening verkennen">
+    <div class="readout">
+      <div class="big"><small id="cnt"></small><span id="maj"></span></div>
+      <div class="acc" id="minor"></div>
+    </div>
+    <div class="staffwrap"><svg id="staff" viewBox="0 0 520 180" role="img" aria-label="Notenbalk in vioolsleutel met de voortekening"></svg></div>
+    <input type="range" id="sl" min="-7" max="7" value="-1" step="1" aria-label="Aantal mollen of kruisen">
+    <div class="ticks" id="ticks"></div>
+    <div class="chips">
+      <button data-v="0">Geen voortekens</button><button data-v="-1">Eén mol</button><button data-v="1">Eén kruis</button><button data-v="-3">Drie mollen</button><button data-v="4">Vier kruisen</button>
+    </div>
+  </section>
+
+  <section class="rules">
+    <div class="box sharpbox">
+      <span class="tag">Kruisen ♯</span>
+      <h2>Een halve toon boven het laatste kruis</h2>
+      <div class="order" id="osharp"></div>
+      <p>Twee kruisen: <span class="nm" data-n="F♯"></span> en <span class="nm" data-n="C♯"></span>. Het laatste is <span class="nm" data-n="C♯"></span>. Ga een halve toon omhoog naar <b><span class="nm" data-n="D"></span></b>, dus <span class="nm" data-n="D"></span> groot.</p>
+    </div>
+    <div class="box flatbox">
+      <span class="tag">Mollen ♭</span>
+      <h2>De voorlaatste mol is de toonsoort</h2>
+      <div class="order" id="oflat"></div>
+      <p>Drie mollen: <span class="nm" data-n="B♭"></span>, <span class="nm" data-n="E♭"></span>, <span class="nm" data-n="A♭"></span>. De voorlaatste is <b><span class="nm" data-n="E♭"></span></b>, dus <span class="nm" data-n="E♭"></span> groot. Bij één mol is er geen voorlaatste: onthoud dat <b><span class="nm" data-n="B♭"></span> <span class="nm" data-n="F"></span> groot</b> betekent.</p>
+    </div>
+  </section>
+
+  <section class="box">
+    <h2>Klein deelt de voortekening</h2>
+    <p>Elke voortekening hoort bij twee toonsoorten: een groot en de parallelle kleine toonsoort, drie halve tonen lager. <span class="nm" data-n="F"></span> groot (één mol) en <span class="nm" data-n="D"></span> klein gebruiken allebei <span class="nm" data-n="B♭"></span>. Dezelfde noten, een andere thuisbasis.</p>
+  </section>
+
+  <section>
+    <h2 style="margin-bottom:12px">Alle 15 voortekeningen</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Voortekening</th><th>Voortekens in volgorde</th><th>Groot</th><th>Klein</th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+    <p class="muted" style="margin-top:10px">Klik op een rij om ze op de notenbalk te zien. Zeven kruisen en zeven mollen worden zelden gebruikt: Cis groot en Des groot klinken hetzelfde, en de versie met mollen leest makkelijker.</p>
+  </section>
+</main>
+</Base>
+
+<style is:global>
+/* Layout: one column. Slider + live staff on top, two rules side by side, full table last. */
+main{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.brand{font:800 15px var(--display);color:var(--violet);letter-spacing:.02em}
+h1{font:800 clamp(32px,7vw,50px)/1.05 var(--display);letter-spacing:-.02em;margin:6px 0 10px;text-wrap:balance}
+h2{font:800 24px/1.15 var(--display);margin:0 0 8px}
+p{margin:0}.muted{color:var(--muted)}
+.box{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:20px}
+.tool{display:flex;flex-direction:column;gap:14px}
+.readout{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.big{font:800 clamp(30px,6vw,44px)/1.05 var(--display);letter-spacing:-.01em}
+.big small{display:block;font:600 13px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.acc{font:800 22px var(--display);text-align:right}
+.staffwrap{overflow-x:auto}
+svg{display:block;width:100%;min-width:420px;height:auto}
+.line{stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.sym{font:700 34px/1 "Noto Music","Segoe UI Symbol","DejaVu Sans",sans-serif}
+.sym.f{fill:var(--flat)}.sym.s{fill:var(--sharp)}
+input[type=range]{width:100%;accent-color:var(--violet);height:32px}
+.ticks{display:flex;justify-content:space-between;font:600 12px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{width:0;display:flex;justify-content:center}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+button{font:600 15px var(--body);color:var(--ink);background:var(--card);border:2px solid var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+button:hover{background:var(--sun);color:#1D1B3A}
+button:focus-visible,input:focus-visible{outline:3px solid var(--violet);outline-offset:3px}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.rules .box{display:flex;flex-direction:column;gap:10px;min-width:0}
+.order{display:flex;gap:6px;flex-wrap:wrap}
+.order span{font:800 20px var(--display);min-width:38px;text-align:center;padding:4px 8px;border-radius:12px;border:2px solid var(--ink);background:var(--paper)}
+.order small{display:block;font:600 11px var(--body);color:var(--muted)}
+.sharpbox{border-color:var(--sharp)}.flatbox{border-color:var(--flat)}
+.tag{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase}
+.sharpbox .tag{color:var(--sharp)}.flatbox .tag{color:var(--flat)}
+.tbl{overflow-x:auto;border:2px solid var(--ink);border-radius:20px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--hover)}
+th{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+tbody tr{cursor:pointer}tbody tr:hover{background:var(--hover)}
+tbody tr.on{background:var(--sun);color:#1D1B3A}
+tbody tr.on td{border-color:#1D1B3A}
+td b{font:800 17px var(--display)}
+td.a{font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;letter-spacing:.04em}
+tr:last-child td{border-bottom:0}
+.seg{display:inline-flex;align-self:flex-start;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:var(--card)}
+.seg button{font:600 15px var(--body);height:42px;border:0;border-radius:0;padding:0 18px;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:hover{background:var(--sun);color:#1D1B3A}
+.seg button[aria-pressed="true"]:hover{background:var(--ink);color:var(--paper)}
+header{display:flex;flex-direction:column;gap:6px}
+</style>
+<script is:inline>
+const L=["C","D","E","F","G","A","B"], SOL=["Do","Re","Mi","Fa","Sol","La","Si"];
+const SH=["F","C","G","D","A","E","B"], FL=["B","E","A","D","G","C","F"];
+const MAJ_S=["C","G","D","A","E","B","F♯","C♯"], MIN_S=["A","E","B","F♯","C♯","G♯","D♯","A♯"];
+const MAJ_F=["C","F","B♭","E♭","A♭","D♭","G♭","C♭"], MIN_F=["A","D","G","C","F","B♭","E♭","A♭"];
+const sol=n=>SOL[L.indexOf(n[0])]+n.slice(1);
+let mode="do";try{if(localStorage.getItem("rn-names")==="abc")mode="abc"}catch(e){}
+const nm=n=>mode==="do"?sol(n):n;
+// Treble staff step: 0 = E4 (bottom line), one step per line/space.
+const SSTEP={F:8,C:5,G:9,D:6,A:3,E:7,B:4}, FSTEP={B:4,E:7,A:3,D:6,G:2,C:5,F:1};
+const key=v=>v>=0?{maj:MAJ_S[v],min:MIN_S[v]}:{maj:MAJ_F[-v],min:MIN_F[-v]};
+const acc=v=>v>0?SH.slice(0,v).map(n=>n+"♯"):v<0?FL.slice(0,-v).map(n=>n+"♭"):[];
+const sig=v=>v===0?"Geen voortekens":Math.abs(v)+(v>0?(v>1?" kruisen":" kruis"):(v<-1?" mollen":" mol"));
+const $=id=>document.getElementById(id), ns="http://www.w3.org/2000/svg";
+const gap=16, bottom=140, CLEF_SIZE=72, CLEF_DY=13;
+function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt)e.textContent=txt;return e}
+function accGlyph(s,flat,cx,cy){
+  const g=el("g",{fill:"none","stroke-linecap":"round","stroke-linejoin":"round",style:"stroke:var(--"+(flat?"flat":"sharp")+")"});
+  if(flat){
+    g.append(el("line",{x1:cx-4,x2:cx-4,y1:cy-24,y2:cy+7,"stroke-width":2.4}));
+    g.append(el("path",{d:`M${cx-4} ${cy+7} C${cx+10} ${cy+2} ${cx+11} ${cy-10} ${cx-4} ${cy-3}`,"stroke-width":2.4}));
+  }else{
+    g.append(el("line",{x1:cx-3.5,x2:cx-3.5,y1:cy-15,y2:cy+12,"stroke-width":1.8}));
+    g.append(el("line",{x1:cx+3.5,x2:cx+3.5,y1:cy-12,y2:cy+15,"stroke-width":1.8}));
+    g.append(el("line",{x1:cx-7,x2:cx+7,y1:cy-1,y2:cy-5,"stroke-width":3.6}));
+    g.append(el("line",{x1:cx-7,x2:cx+7,y1:cy+6,y2:cy+2,"stroke-width":3.6}));
+  }
+  s.append(g);
+}
+function draw(v){
+  const s=$("staff");s.innerHTML="";
+  for(let i=0;i<5;i++){s.append(el("line",{class:"line",x1:16,x2:504,y1:bottom-i*gap,y2:bottom-i*gap}))}
+  s.append(el("line",{class:"line",x1:16,x2:16,y1:bottom-4*gap,y2:bottom}));
+  s.append(el("text",{x:22,y:bottom-gap*1+CLEF_DY,style:"font:400 "+CLEF_SIZE+"px 'Noto Music','Segoe UI Symbol','DejaVu Sans',serif;fill:var(--ink)"},"\u{1D11E}"));
+  const list=acc(v);
+  list.forEach((a,i)=>{
+    const flat=a.endsWith("♭"), step=(flat?FSTEP:SSTEP)[a[0]];
+    const y=bottom-step*gap/2;
+    accGlyph(s,flat,96+i*34,y);
+  });
+  if(!list.length)s.append(el("text",{x:260,y:bottom-gap*2+6,"text-anchor":"middle",fill:"currentColor",style:"font:600 15px var(--body);fill:var(--muted)"},"Niets: alleen witte toetsen"));
+}
+function setV(v){
+  v=+v;cur=v;$("sl").value=v;const k=key(v);
+  $("cnt").textContent=sig(v);
+  $("maj").textContent=nm(k.maj)+" groot";
+  $("minor").textContent=nm(k.min)+" klein";
+  draw(v);
+  document.querySelectorAll("#tb tr").forEach(r=>r.classList.toggle("on",+r.dataset.v===v));
+}
+$("sl").oninput=e=>setV(e.target.value);
+document.querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>setV(b.dataset.v));
+$("ticks").innerHTML=[...Array(15)].map((_,i)=>{const v=i-7;return `<span>${v<0?"♭"+(-v):v>0?"♯"+v:"0"}</span>`}).join("");
+let cur=-1;
+function build(){
+  $("osharp").innerHTML=SH.map((n,i)=>`<span style="color:var(--sharp)">${nm(n)}♯<small>${i+1}</small></span>`).join("");
+  $("oflat").innerHTML=FL.map((n,i)=>`<span style="color:var(--flat)">${nm(n)}♭<small>${i+1}</small></span>`).join("");
+  $("tb").innerHTML=[...Array(15)].map((_,i)=>{const v=i-7,k=key(v);
+    return `<tr data-v="${v}"><td>${sig(v)}</td><td class="a">${acc(v).map(a=>nm(a[0])+a.slice(1)).join(" ")||"–"}</td><td><b>${nm(k.maj)}</b> groot</td><td><b>${nm(k.min)}</b> klein</td></tr>`}).join("");
+  document.querySelectorAll("#tb tr").forEach(r=>r.onclick=()=>{setV(r.dataset.v);window.scrollTo({top:0,behavior:"smooth"})});
+  document.querySelectorAll(".nm").forEach(e=>{const n=e.dataset.n;e.textContent=nm(n[0])+n.slice(1)});
+  setV(cur);
+}
+function setMode(m){mode=m;try{localStorage.setItem("rn-names",m)}catch(e){}
+  $("nDO").setAttribute("aria-pressed",m==="do");$("nABC").setAttribute("aria-pressed",m==="abc");build()}
+$("nDO").onclick=()=>setMode("do");$("nABC").onclick=()=>setMode("abc");
+setMode(mode);
+if(document.fonts&&document.fonts.load)document.fonts.load("80px 'Noto Music'","\u{1D11E}").then(()=>draw(cur)).catch(()=>{});
+</script>
