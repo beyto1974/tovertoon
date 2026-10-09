@@ -1,8 +1,10 @@
 # Tovertoon
 
+**Live site: https://beyto1974.github.io/tovertoon/**
+
 Interactive music theory lessons in Dutch, for people learning to read music. Short pages with sound, notation and exercises, no sign-up and no tracking.
 
-Released under the MIT license. Live site: https://beyto1974.github.io/tovertoon/
+Released under the MIT license.
 
 ## Pages
 
