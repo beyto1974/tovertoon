@@ -12,11 +12,12 @@ interface Props {
   wrap?: string;
 }
 const { title, description = "Muziektheorie om mee te spelen.", wrap = "820px" } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const path = Astro.url.pathname.replace(/\/$/, "");
 const links = [
-  { href: "/voortekening", label: "Voortekening" },
-  { href: "/toonladders-oefenen", label: "Toonladders oefenen" },
-  { href: "/maatsoorten", label: "Maatsoorten" },
+  { href: `${base}/voortekening`, label: "Voortekening" },
+  { href: `${base}/toonladders-oefenen`, label: "Toonladders oefenen" },
+  { href: `${base}/maatsoorten`, label: "Maatsoorten" },
 ];
 ---
 <!doctype html>
@@ -25,12 +26,17 @@ const links = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <title>{title === "Tovertoon" ? title : `${title} · Tovertoon`}</title>
   </head>
   <body style={`--wrap:${wrap}`}>
     <nav class="site-nav" aria-label="Hoofdmenu">
-      <a class="brand" href="/">Tovertoon</a>
+      <a class="brand" href={`${base}/`}>Tovertoon</a>
       <ul>
         {links.map((l) => (
           <li><a href={l.href} aria-current={path === l.href ? "page" : undefined}>{l.label}</a></li>
@@ -39,7 +45,7 @@ const links = [
     </nav>
     <slot />
     <footer class="site-foot">
-      Tovertoon is gratis en open source onder de MIT-licentie.
+      Tovertoon is gratis en open source onder de MIT-licentie. <a href={`${base}/lettertypes.txt`}>Lettertypelicenties</a>
     </footer>
   </body>
 </html>
