@@ -2,7 +2,7 @@
 
 Interactive music theory lessons in Dutch, for people learning to read music. Short pages with sound, notation and exercises, no sign-up and no tracking.
 
-The repository is private for now and is meant to become public. It is released under the MIT license.
+Released under the MIT license. Live site: https://beyto1974.github.io/tovertoon/
 
 ## Pages
 
@@ -34,6 +34,18 @@ npm run preview   # serve dist/ locally
 - Fonts are self-hosted through `@fontsource` packages (Bricolage Grotesque, DM Sans, Noto Music), so the site makes no requests to Google.
 - Audio is synthesized with the Web Audio API. It only starts after a click.
 
+## Deployment
+
+Pushes to `master` build the site and deploy it to GitHub Pages (`.github/workflows/deploy.yml`). On Pages the site is served under `/tovertoon`; `astro.config.mjs` sets the base path only when `GITHUB_ACTIONS` is set, so local development stays at the root. Internal links go through `import.meta.env.BASE_URL`.
+
+## Security
+
+- No server code, no accounts, no analytics, no third-party requests. Fonts are self-hosted.
+- Every page carries a Content-Security-Policy meta tag that only allows the site's own files, inline scripts and styles. GitHub Pages cannot set HTTP headers, so this is the strongest option there. `frame-ancestors` is not supported in a meta tag.
+- Dependabot updates npm packages and GitHub Actions weekly. Actions are pinned to commit SHAs.
+- CodeQL runs on pushes, pull requests and weekly. Secret scanning with push protection is enabled.
+- Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
+
 ## Notes
 
 - The treble clef is the Noto Music glyph (U+1D11E). Sharps and flats on the staff are drawn as SVG shapes instead of text, because font metrics placed text glyphs at the wrong height.
@@ -41,4 +53,4 @@ npm run preview   # serve dist/ locally
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Fonts keep their own licenses (SIL Open Font License).
+MIT, see [LICENSE](LICENSE). The bundled fonts keep their own SIL Open Font License; the texts are in `public/lettertypes.txt` and linked from the site footer.
