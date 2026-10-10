@@ -22,8 +22,10 @@ import "../styles/components.css";
           <button type="button" data-v="treble">G-sleutel</button><button type="button" data-v="bass">F-sleutel</button>
         </div>
         <button type="button" class="pill" id="middle">Toon middelste Do</button>
+        <button type="button" class="pill" id="lower" aria-label="Eén stap lager">▼ Lager</button>
+        <button type="button" class="pill" id="higher" aria-label="Eén stap hoger">▲ Hoger</button>
       </div>
-      <div class="staffwrap"><svg id="vstaff" role="img" aria-label="Notenbalk om te verkennen"></svg></div>
+      <div class="staffwrap"><svg id="vstaff" tabindex="0" role="group" aria-label="Notenbalk om te verkennen. Gebruik de pijltjestoetsen omhoog en omlaag om een noot te kiezen."></svg></div>
       <p id="vname" class="big" aria-live="polite"></p>
     </section>
 
@@ -100,6 +102,17 @@ import "../styles/components.css";
     playPitch({ d, alter: 0 });
   }
   seg($("vclef"), vclef, (v) => { vclef = v; save("nb-vclef", v); vsel = null; drawVerken(); });
+  // Keyboard and touch alternative to clicking the thin lines: step one position up or down.
+  function stepNote(delta) {
+    const c = CLEFS[vclef];
+    const next = vsel === null ? pitch("C", 4).d : Math.min(c.d0 + 14, Math.max(c.d0 - 6, vsel + delta));
+    select(next);
+  }
+  $("lower").onclick = () => stepNote(-1);
+  $("higher").onclick = () => stepNote(1);
+  $("vstaff").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepNote(e.key === "ArrowUp" ? 1 : -1); }
+  });
   $("middle").onclick = () => { vsel = pitch("C", 4).d; drawVerken(); playPitch({ d: vsel, alter: 0 }); };
 
   // ---- tables ----
