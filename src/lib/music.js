@@ -237,3 +237,28 @@ export function seg(box, value, fn) {
   });
   sync(value);
 }
+
+// ---- keys and scales ----
+const MAJ_S = ["C", "G", "D", "A", "E", "B", "F♯", "C♯"], MIN_S = ["A", "E", "B", "F♯", "C♯", "G♯", "D♯", "A♯"];
+const MAJ_F = ["C", "F", "B♭", "E♭", "A♭", "D♭", "G♭", "C♭"], MIN_F = ["A", "D", "G", "C", "F", "B♭", "E♭", "A♭"];
+/** Key names for a signature: v > 0 sharps, v < 0 flats. */
+export const keyNames = (v) => (v >= 0 ? { maj: MAJ_S[v], min: MIN_S[v] } : { maj: MAJ_F[-v], min: MIN_F[-v] });
+export const splitName = (n) => ({ letter: n[0], alter: n.endsWith("♯") ? 1 : n.endsWith("♭") ? -1 : 0 });
+export const SCALE_PATTERNS = {
+  maj: [0, 2, 4, 5, 7, 9, 11, 12],
+  nat: [0, 2, 3, 5, 7, 8, 10, 12],
+  har: [0, 2, 3, 5, 7, 8, 11, 12],
+  mel: [0, 2, 3, 5, 7, 9, 11, 12],
+};
+const semisOf = (p) => SEMI[((p.d % 7) + 7) % 7] + 12 * Math.floor(p.d / 7);
+/** Eight pitches of a scale starting on tonic (spelled correctly, one letter per degree). */
+export function scalePitches(tonic, kind) {
+  const base = semisOf(tonic) + tonic.alter;
+  return SCALE_PATTERNS[kind].map((s, i) => {
+    const d = tonic.d + i;
+    return { d, alter: base + s - semisOf({ d }) };
+  });
+}
+export function playSequence(ps, step = 0.42) {
+  ps.forEach((p, i) => playPitch(p, i * step, 0.9, 0.45));
+}

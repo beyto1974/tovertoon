@@ -1,0 +1,236 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Kwintencirkel" description="De kwintencirkel interactief: klik een toonsoort en zie voortekening, parallelle toonsoort, dominant en subdominant. Met oefening.">
+  <main>
+    <header>
+      <h1>De kwintencirkel</h1>
+      <p class="muted">Twaalf toonsoorten op een cirkel. Elke stap met de klok mee is een kwint omhoog en voegt één kruis toe (of haalt één mol weg). Buiten staan de grote toonladders, binnen de parallelle kleine.</p>
+    </header>
+
+    <div class="bar">
+      <div class="grp"><span class="lab">Noten</span>
+        <div class="seg" id="names" role="group" aria-label="Notennamen">
+          <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+        </div></div>
+      <div class="grp"><span class="lab">Modus</span>
+        <div class="seg" id="mode" role="group" aria-label="Modus">
+          <button type="button" data-v="explore">Verkennen</button><button type="button" data-v="quiz">Oefenen</button>
+        </div></div>
+    </div>
+
+    <section class="two">
+      <div class="box" id="circlebox">
+        <svg id="circle" viewBox="0 0 440 440" role="group" aria-label="Kwintencirkel"></svg>
+      </div>
+      <div class="box" id="info" aria-live="polite">
+        <div id="explore">
+          <div class="lab" id="icount"></div>
+          <div class="big2" id="iname"></div>
+          <div class="staffwrap"><svg id="kstaff" role="img" aria-label="Voortekening"></svg></div>
+          <div id="ialt" class="bar" hidden><span class="lab">Schrijfwijze</span>
+            <div class="seg" id="alt" role="group" aria-label="Schrijfwijze"><button type="button" data-v="0">Standaard</button><button type="button" data-v="1">Enharmonisch</button></div></div>
+          <table><tbody>
+            <tr><th>Parallel</th><td id="ipar"></td></tr>
+            <tr><th>Dominant (kwint omhoog)</th><td id="idom"></td></tr>
+            <tr><th>Subdominant (kwint omlaag)</th><td id="isub"></td></tr>
+          </tbody></table>
+          <div class="bar"><button type="button" class="go" id="splay">▶ Speel de toonladder</button></div>
+        </div>
+        <div id="quiz" hidden>
+          <h2 id="qt"></h2>
+          <p class="muted">Klik het antwoord aan op de cirkel.</p>
+          <div class="fb" id="qfb" aria-live="polite"></div>
+          <div class="stats" id="qstats"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="box">
+      <h2>Wat de cirkel je vertelt</h2>
+      <ul class="plain">
+        <li><b>Buren</b> delen bijna alle noten: ze verschillen maar één kruis of mol.</li>
+        <li><b>Dominant</b> is de buur met de klok mee (een kwint hoger). <b>Subdominant</b> is de buur tegen de klok in (een kwint lager).</li>
+        <li><b>Parallel</b> is de toonladder aan de andere kant van de ring: zelfde voortekening, andere thuisnoot, drie halve tonen lager.</li>
+        <li>Onderaan overlappen toonsoorten: Fa♯ groot en Sol♭ groot klinken hetzelfde, maar worden anders geschreven.</li>
+      </ul>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  #circle { display: block; width: 100%; max-width: 440px; margin: 0 auto; height: auto; }
+  #circle .w { fill: var(--card); stroke: var(--ink); stroke-width: 2; cursor: pointer; transition: fill 0.12s; }
+  #circle .w:hover { fill: var(--hover); }
+  #circle .w.sel { fill: var(--violet); }
+  #circle .w.nb { fill: var(--sun); }
+  #circle .w.par { fill: var(--hover); }
+  #circle text { font-family: var(--display); font-weight: 800; fill: var(--ink); pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+  #circle .w.sel + text { fill: var(--onviolet); }
+  #circle .w.nb + text { fill: #1d1b3a; }
+  #circle .hub { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+  #circle .good { fill: var(--good) !important; }
+  #circle .good + text { fill: #fff; }
+  #circle .bad { fill: var(--bad) !important; }
+  #circle .bad + text { fill: #fff; }
+  .big2 { font: 800 clamp(30px, 6vw, 40px) / 1.05 var(--display); }
+  th { white-space: nowrap; }
+</style>
+
+<script>
+  import { $, nm, bindNames, keyNames, splitName, scalePitches, playSequence, staff, store, save, seg, rnd, makeStats, feedback, el } from "../lib/music.js";
+
+  // Position i (0 = C at the top, clockwise). Outer ring: majors, inner ring: parallel minors.
+  const defaultSig = (p) => (p <= 6 ? p : p - 12); // positions 5 and 6 default to sharps, 7 to flats
+  let ring = "maj", pos = 0, alt = 0, mode = store("kc-mode", "explore", ["explore", "quiz"]);
+  const ambiguous = (p) => p === 5 || p === 6 || p === 7;
+  const sigOf = (p, a) => {
+    let s = defaultSig(p);
+    if (a && ambiguous(p)) s = s > 0 ? s - 12 : s + 12;
+    return s;
+  };
+  const nameOf = (r, p, a = 0) => keyNames(sigOf(p, a))[r];
+  const label = (r, p) => {
+    const a = nm(nameOf(r, p));
+    return ambiguous(p) ? a + " / " + nm(nameOf(r, p, 1)) : a;
+  };
+  const kindWord = (r) => (r === "maj" ? "groot" : "klein");
+  const unit = (v) => (v === 0 ? "Geen voortekens" : Math.abs(v) + " " + (v > 0 ? (v === 1 ? "kruis" : "kruisen") : (v === -1 ? "mol" : "mollen")));
+  const mod = (n) => ((n % 12) + 12) % 12;
+
+  // ---- draw the circle ----
+  const CX = 220, CY = 220;
+  function sector(r0, r1, a0, a1) {
+    const p = (r, a) => [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+    const [x0, y0] = p(r1, a0), [x1, y1] = p(r1, a1), [x2, y2] = p(r0, a1), [x3, y3] = p(r0, a0);
+    return `M${x0} ${y0} A${r1} ${r1} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 0 0 ${x3} ${y3} Z`;
+  }
+  const wedges = { maj: [], min: [] };
+  function build() {
+    const svg = $("circle");
+    svg.innerHTML = "";
+    ["maj", "min"].forEach((r) => {
+      const r0 = r === "maj" ? 140 : 88, r1 = r === "maj" ? 212 : 140;
+      for (let i = 0; i < 12; i++) {
+        const mid = (-90 + i * 30) * (Math.PI / 180);
+        const a0 = mid - (15 * Math.PI) / 180, a1 = mid + (15 * Math.PI) / 180;
+        const path = el("path", { class: "w", d: sector(r0, r1, a0, a1), tabindex: 0, role: "button", "aria-label": "" });
+        const rm = (r0 + r1) / 2;
+        const t = el("text", { x: CX + rm * Math.cos(mid), y: CY + rm * Math.sin(mid), style: `font-size:${ambiguous(i) ? (r === "maj" ? 13 : 11) : r === "maj" ? 22 : 17}px` });
+        path.addEventListener("click", () => pick(r, i));
+        path.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(r, i); } });
+        svg.append(path, t);
+        wedges[r][i] = { path, t };
+      }
+    });
+    svg.append(el("circle", { class: "hub", cx: CX, cy: CY, r: 86 }));
+    const hub = el("text", { id: "hub", x: CX, y: CY, style: "font-size:17px;font-family:var(--display);font-weight:800;fill:var(--muted);text-anchor:middle;dominant-baseline:central" }, "kwinten");
+    svg.append(hub);
+    labels();
+  }
+  function labels() {
+    ["maj", "min"].forEach((r) => {
+      for (let i = 0; i < 12; i++) {
+        wedges[r][i].t.textContent = label(r, i);
+        wedges[r][i].path.setAttribute("aria-label", `${label(r, i)} ${kindWord(r)}`);
+      }
+    });
+  }
+  function paint() {
+    ["maj", "min"].forEach((r) => wedges[r].forEach((w) => (w.path.setAttribute("class", "w"))));
+    if (mode !== "explore") return;
+    wedges[ring][pos].path.setAttribute("class", "w sel");
+    wedges[ring][mod(pos + 1)].path.setAttribute("class", "w nb");
+    wedges[ring][mod(pos - 1)].path.setAttribute("class", "w nb");
+    wedges[ring === "maj" ? "min" : "maj"][pos].path.setAttribute("class", "w par");
+  }
+
+  // ---- explore ----
+  function info() {
+    const v = sigOf(pos, alt);
+    const k = keyNames(v);
+    const nameNow = k[ring];
+    $("icount").textContent = unit(v);
+    $("iname").textContent = nm(nameNow) + " " + kindWord(ring);
+    staff($("kstaff"), { clef: "treble", width: 340, keysig: v });
+    $("ialt").hidden = !ambiguous(pos);
+    const other = ring === "maj" ? "min" : "maj";
+    $("ipar").textContent = nm(k[other]) + " " + kindWord(other);
+    const dp = mod(pos + 1), sp = mod(pos - 1);
+    $("idom").textContent = nm(nameOf(ring, dp)) + " " + kindWord(ring) + " (" + unit(sigOf(dp, 0)).toLowerCase() + ")";
+    $("isub").textContent = nm(nameOf(ring, sp)) + " " + kindWord(ring) + " (" + unit(sigOf(sp, 0)).toLowerCase() + ")";
+    paint();
+  }
+  function playScale() {
+    const v = sigOf(pos, alt);
+    const t = splitName(keyNames(v)[ring]);
+    const tonic = { d: 28 + ["C", "D", "E", "F", "G", "A", "B"].indexOf(t.letter), alter: t.alter };
+    playSequence(scalePitches(tonic, ring === "maj" ? "maj" : "nat"));
+  }
+  $("splay").onclick = playScale;
+  seg($("alt"), "0", (v) => { alt = Number(v); info(); });
+
+  // ---- quiz ----
+  const stats = makeStats($("qstats"), "kc-best");
+  let q = null;
+  function makeQ() {
+    const types = ["dom", "sub", "par"];
+    let t, r, p;
+    do {
+      t = types[rnd(3)];
+      r = rnd(2) ? "maj" : "min";
+      p = rnd(12);
+    } while (q && q.t === t && q.r === r && q.p === p);
+    return { t, r, p, done: false };
+  }
+  function answerKey(x) {
+    return x.t === "dom" ? [x.r, mod(x.p + 1)] : x.t === "sub" ? [x.r, mod(x.p - 1)] : [x.r === "maj" ? "min" : "maj", x.p];
+  }
+  function qText() {
+    const n = nm(nameOf(q.r, q.p)) + " " + kindWord(q.r);
+    return q.t === "dom" ? `Wat is de dominant van ${n}?` : q.t === "sub" ? `Wat is de subdominant van ${n}?` : `Wat is de parallelle toonsoort van ${n}?`;
+  }
+  function quizRender() {
+    $("qt").textContent = qText();
+    $("qfb").innerHTML = "";
+    paint();
+    wedges[q.r][q.p].path.setAttribute("class", "w sel");
+    if (q.done) quizResult();
+  }
+  function quizResult() {
+    const [ar, ap] = answerKey(q);
+    const ok = q.pr === ar && q.pp === ap;
+    wedges[ar][ap].path.setAttribute("class", "w good");
+    if (!ok) wedges[q.pr][q.pp].path.setAttribute("class", "w bad");
+    const ans = nm(nameOf(ar, ap)) + " " + kindWord(ar);
+    const why = q.t === "dom" ? "Dominant: een kwint omhoog, dus één stap met de klok mee." : q.t === "sub" ? "Subdominant: een kwint omlaag, dus één stap tegen de klok in." : "Parallel: zelfde voortekening, de andere ring op dezelfde plek.";
+    feedback($("qfb"), ok, ok ? "Goed zo!" : `Het was ${ans}.`, why, () => { q = makeQ(); quizRender(); });
+  }
+  function pick(r, i) {
+    if (mode === "quiz") {
+      if (q.done) return;
+      q.done = true; q.pr = r; q.pp = i;
+      const [ar, ap] = answerKey(q);
+      stats.record(r === ar && i === ap);
+      quizRender();
+      return;
+    }
+    ring = r; pos = i; alt = 0;
+    seg($("alt"), "0", (v) => { alt = Number(v); info(); });
+    info();
+  }
+
+  function setMode(m) {
+    mode = m;
+    save("kc-mode", m);
+    $("explore").hidden = m !== "explore";
+    $("quiz").hidden = m !== "quiz";
+    if (m === "quiz") { q = q || makeQ(); quizRender(); } else info();
+  }
+  seg($("mode"), mode, setMode);
+  bindNames($("names"), () => { labels(); if (mode === "explore") info(); else quizRender(); });
+  build();
+  setMode(mode);
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => { if (mode === "explore") info(); }).catch(() => {});
+</script>
