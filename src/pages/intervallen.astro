@@ -1,0 +1,263 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Intervallen" description="Leer intervallen kennen: de afstand tussen twee noten. Uitleg, een speeltuin met geluid en oefeningen op de notenbalk en op gehoor.">
+  <main>
+    <header>
+      <h1>Intervallen</h1>
+      <p class="muted">Een interval is de afstand tussen twee noten. Je telt hoeveel letters (lijnen en ruimten) de noten uit elkaar liggen: dat geeft de <b>grootte</b>. Je telt hoeveel halve tonen ertussen zitten: dat geeft de <b>soort</b>.</p>
+    </header>
+
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+      </div></div>
+
+    <section class="box" aria-labelledby="h-tabel">
+      <h2 id="h-tabel">Alle intervallen binnen een octaaf</h2>
+      <p class="muted">Klik op een rij: je ziet het interval boven Do4 en hoort het. De halve tonen tellen vanaf de onderste noot.</p>
+      <div class="tblwrap"><table id="tbl">
+        <thead><tr><th>Interval</th><th>Halve tonen</th><th>Voorbeeld vanaf Do</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="staffwrap"><svg id="tstaff" role="img" aria-label="Interval op de notenbalk"></svg></div>
+    </section>
+
+    <section class="box" aria-labelledby="h-regel">
+      <h2 id="h-regel">Twee stappen: grootte en soort</h2>
+      <ol class="plain">
+        <li><b>Grootte:</b> tel de lettern inclusief beide noten. Do naar Sol is Do-Re-Mi-Fa-Sol: vijf letters, dus een kwint.</li>
+        <li><b>Soort:</b> tel de halve tonen. Een kwint met 7 halve tonen is <b>rein</b>. Eén halve toon minder is <b>verminderd</b>, één meer is <b>overmatig</b>.</li>
+        <li>Secunde, terts, sext en septiem zijn <b>groot</b> of <b>klein</b>. Prime, kwart, kwint en octaaf zijn <b>rein</b>.</li>
+      </ol>
+    </section>
+
+    <section class="box" aria-labelledby="h-spel">
+      <h2 id="h-spel">Speeltuin</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Onderste noot</span><select id="root" aria-label="Onderste noot"></select></div>
+        <div class="grp"><span class="lab">Interval</span><select id="ival" aria-label="Interval"></select></div>
+        <button type="button" class="go" id="play">▶ Speel</button>
+        <div class="seg" id="pmode" role="group" aria-label="Samen of na elkaar">
+          <button type="button" data-v="mel">Na elkaar</button><button type="button" data-v="har">Samen</button>
+        </div>
+      </div>
+      <div class="staffwrap"><svg id="pstaff" role="img" aria-label="Gekozen interval"></svg></div>
+      <p id="pname" class="big" aria-live="polite"></p>
+    </section>
+
+    <section class="box" aria-labelledby="h-oef">
+      <h2 id="h-oef">Oefenen</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Oefening</span><div class="seg" id="omode" role="group" aria-label="Oefening">
+          <button type="button" data-v="staff">Op de balk</button><button type="button" data-v="ear">Op gehoor</button></div></div>
+        <div class="grp"><span class="lab">Moeilijkheid</span><div class="seg" id="olevel" role="group" aria-label="Moeilijkheid">
+          <button type="button" data-v="basic">Rein en groot</button><button type="button" data-v="all">Alle soorten</button></div></div>
+      </div>
+      <h3 id="oq"></h3>
+      <div class="staffwrap" id="osw"><svg id="ostaff" role="img" aria-label="Interval om te benoemen"></svg></div>
+      <button type="button" class="go sec" id="replay" hidden>▶ Nog eens horen</button>
+      <div class="opts" id="oopts"></div>
+      <div class="fb" id="ofb" aria-live="polite"></div>
+      <div class="stats" id="ostats"></div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .big { font: 800 28px / 1.1 var(--display); min-height: 1.2em; text-align: center; }
+  #tbl tbody tr { cursor: pointer; }
+  #tbl tbody tr:hover { background: var(--hover); }
+  #tbl tbody tr.on { background: var(--sun); color: #1d1b3a; }
+  #tbl tbody tr.on td { border-color: #1d1b3a; }
+  ol.plain { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+
+<script>
+  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, accText, playPitch, staff, store, save, seg, rnd, shuffle, makeStats, feedback, markOptions, pitchName } from "../lib/music.js";
+
+  // Interval catalogue: size = number of letters spanned, semis = half tones.
+  const IV = [
+    { id: "p1", size: 1, semis: 0, name: "reine prime", short: "prime" },
+    { id: "k2", size: 2, semis: 1, name: "kleine secunde", short: "secunde" },
+    { id: "g2", size: 2, semis: 2, name: "grote secunde", short: "secunde" },
+    { id: "k3", size: 3, semis: 3, name: "kleine terts", short: "terts" },
+    { id: "g3", size: 3, semis: 4, name: "grote terts", short: "terts" },
+    { id: "r4", size: 4, semis: 5, name: "reine kwart", short: "kwart" },
+    { id: "o4", size: 4, semis: 6, name: "overmatige kwart", short: "kwart" },
+    { id: "v5", size: 5, semis: 6, name: "verminderde kwint", short: "kwint" },
+    { id: "r5", size: 5, semis: 7, name: "reine kwint", short: "kwint" },
+    { id: "k6", size: 6, semis: 8, name: "kleine sext", short: "sext" },
+    { id: "g6", size: 6, semis: 9, name: "grote sext", short: "sext" },
+    { id: "k7", size: 7, semis: 10, name: "kleine septiem", short: "septiem" },
+    { id: "g7", size: 7, semis: 11, name: "grote septiem", short: "septiem" },
+    { id: "r8", size: 8, semis: 12, name: "reine octaaf", short: "octaaf" },
+  ];
+  const BASIC = ["p1", "g2", "g3", "r4", "r5", "g6", "g7", "r8", "k3", "k6"];
+  const byId = Object.fromEntries(IV.map((i) => [i.id, i]));
+
+  /** Upper pitch for a lower pitch and an interval; null when it would need a double accidental. */
+  function upper(low, iv) {
+    const d = low.d + iv.size - 1;
+    const semisNatural = SEMI[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
+    const lowSemis = SEMI[((low.d % 7) + 7) % 7] + 12 * Math.floor(low.d / 7) + low.alter;
+    const alter = lowSemis + iv.semis - semisNatural;
+    if (Math.abs(alter) > 1) return null;
+    return { d, alter };
+  }
+  const ivName = (iv) => iv.name.replace("reine octaaf", "reine octaaf").replace("reine prime", "reine prime");
+
+  // ---- table ----
+  const C4 = pitch("C", 4);
+  function drawStaffPair(svg, low, high) {
+    const clef = "treble";
+    const st = staff(svg, { clef, width: 340 });
+    if (low) st.note(low, 160, { stem: false });
+    if (high) st.note(high, low && high.d === low.d ? 200 : 160, { stem: false });
+    // second note shifted right when the interval is a second so heads do not collide
+    return st;
+  }
+  function pair(svg, low, high) {
+    const st = staff(svg, { clef: "treble", width: 340 });
+    const close = high.d - low.d === 1;
+    st.note(low, 180, { stem: false });
+    st.note(high, close ? 206 : 180, { stem: false });
+  }
+  function tableRows() {
+    const tb = $("tbl").querySelector("tbody");
+    tb.innerHTML = "";
+    IV.forEach((iv) => {
+      const up = upper(C4, iv);
+      const tr = document.createElement("tr");
+      tr.dataset.id = iv.id;
+      tr.innerHTML = `<td><b>${iv.name}</b></td><td>${iv.semis}</td><td>${up ? nm("C") + " – " + nm(letterOf(up) + accText(up.alter)) : "–"}</td>`;
+      tr.onclick = () => { showRow(iv); };
+      tb.append(tr);
+    });
+  }
+  let rowSel = byId.k3;
+  function showRow(iv) {
+    rowSel = iv;
+    $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === iv.id));
+    const up = upper(C4, iv);
+    if (!up) return;
+    pair($("tstaff"), C4, up);
+    playPitch(C4, 0, 1.1);
+    playPitch(up, 0.7, 1.4);
+  }
+
+  // ---- playground ----
+  const ROOTS = [];
+  for (const L of ["C", "D", "E", "F", "G", "A", "B"]) ROOTS.push(pitch(L, 4));
+  let pmode = store("iv-pmode", "mel", ["mel", "har"]);
+  function fillSelects() {
+    const r = $("root");
+    const cur = r.value || "0";
+    r.innerHTML = ROOTS.map((p, i) => `<option value="${i}">${nm(letterOf(p))}4</option>`).join("");
+    r.value = cur;
+    const v = $("ival");
+    const curv = v.value || "g3";
+    v.innerHTML = IV.map((iv) => `<option value="${iv.id}">${iv.name}</option>`).join("");
+    v.value = curv;
+  }
+  function playground(playSound) {
+    const low = ROOTS[+$("root").value];
+    const iv = byId[$("ival").value];
+    const up = upper(low, iv);
+    if (!up) {
+      $("pname").textContent = "Dit interval heeft hier een dubbel kruis of dubbele mol nodig. Kies een andere onderste noot.";
+      pair($("pstaff"), low, low);
+      return;
+    }
+    pair($("pstaff"), low, up);
+    $("pname").textContent = `${pitchName(low)} – ${pitchName(up)}: ${iv.name}`;
+    if (playSound) {
+      if (pmode === "har") { playPitch(low, 0, 1.6); playPitch(up, 0, 1.6); }
+      else { playPitch(low, 0, 1.1); playPitch(up, 0.7, 1.4); }
+    }
+  }
+  $("root").onchange = () => playground(false);
+  $("ival").onchange = () => playground(false);
+  $("play").onclick = () => playground(true);
+  seg($("pmode"), pmode, (v) => { pmode = v; save("iv-pmode", v); });
+
+  // ---- exercise ----
+  let omode = store("iv-omode", "staff", ["staff", "ear"]);
+  let olevel = store("iv-olevel", "basic", ["basic", "all"]);
+  const stats = makeStats($("ostats"), "iv-best");
+  let q = null;
+  function pool() { return olevel === "basic" ? BASIC.map((id) => byId[id]) : IV; }
+  function make() {
+    for (let t = 0; t < 200; t++) {
+      const iv = pool()[rnd(pool().length)];
+      if (omode === "ear" && iv.id === "p1") continue;
+      // low note: any natural white key between G3 and G5-ish so both notes fit the treble staff nicely
+      const low = { d: pitch("C", 4).d + rnd(8) - 1, alter: 0 };
+      const up = upper(low, iv);
+      if (!up) continue;
+      if (up.d > pitch("A", 5).d) continue;
+      if (q && q.iv.id === iv.id && q.low.d === low.d) continue;
+      return { iv, low, up, done: false };
+    }
+  }
+  function options() {
+    const correct = q.iv;
+    const same = IV.filter((i) => i.id !== correct.id && pool().some((p) => p.id === i.id));
+    // distractors close in size, then any other
+    same.sort((a, b) => Math.abs(a.semis - correct.semis) - Math.abs(b.semis - correct.semis) || Math.random() - 0.5);
+    return shuffle([correct, ...same.slice(0, 3)]);
+  }
+  function render() {
+    $("oq").textContent = omode === "staff" ? "Welk interval zie je?" : "Welk interval hoor je?";
+    $("osw").hidden = omode === "ear" && !q.done;
+    $("replay").hidden = omode !== "ear";
+    if (!$("osw").hidden) pair($("ostaff"), q.low, q.up);
+    const o = $("oopts");
+    o.innerHTML = "";
+    q.opts = q.opts || options();
+    q.opts.forEach((iv) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.v = iv.id;
+      b.textContent = iv.name;
+      b.onclick = () => answer(iv.id);
+      o.append(b);
+    });
+    $("ofb").innerHTML = "";
+    if (q.done) result();
+  }
+  function hear() { playPitch(q.low, 0, 1.1); playPitch(q.up, 0.7, 1.4); }
+  function explain() {
+    const iv = q.iv;
+    const letters = iv.size;
+    return `${pitchName(q.low)} naar ${pitchName(q.up)} overspant ${letters} letters en ${iv.semis} halve ${iv.semis === 1 ? "toon" : "tonen"}: dat is een ${iv.name}.`;
+  }
+  function result() {
+    markOptions($("oopts"), q.iv.id, q.picked);
+    const ok = q.picked === q.iv.id;
+    feedback($("ofb"), ok, ok ? "Goed zo!" : `Het was een ${q.iv.name}.`, explain(), next);
+    if (omode === "ear") { $("osw").hidden = false; pair($("ostaff"), q.low, q.up); }
+  }
+  function answer(id) {
+    if (q.done) return;
+    q.done = true;
+    q.picked = id;
+    stats.record(id === q.iv.id);
+    result();
+  }
+  function next() { q = make(); render(); hear(); }
+  $("replay").onclick = hear;
+  seg($("omode"), omode, (v) => { omode = v; save("iv-omode", v); q = make(); render(); hear(); });
+  seg($("olevel"), olevel, (v) => { olevel = v; save("iv-olevel", v); q = make(); render(); hear(); });
+
+  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); q.opts = null; render(); });
+  function showRowQuiet() {
+    $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === rowSel.id));
+    const up = upper(C4, rowSel);
+    if (up) pair($("tstaff"), C4, up);
+  }
+  fillSelects(); tableRows(); showRowQuiet(); playground(false);
+  q = make(); render();
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => { showRowQuiet(); playground(false); if (!$("osw").hidden) pair($("ostaff"), q.low, q.up); }).catch(() => {});
+</script>
