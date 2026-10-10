@@ -10,10 +10,15 @@ Released under the MIT license.
 
 | Route | What it is |
 | --- | --- |
-| `/` | Homepage with an index of all lessons. |
+| `/` | Homepage with an index of all lessons, grouped by theme. |
+| `/notenbalk` | Reading the staff: treble and bass clef, lines and spaces, ledger lines. Click-to-hear explorer and a note-naming exercise. |
+| `/intervallen` | Intervals: table of every interval in an octave, a playground with melodic and harmonic playback, exercises on the staff and by ear. |
 | `/voortekening` | Key signatures: a slider from 7 flats to 7 sharps with a live treble staff, the two rules for finding the key, relative minors, and a table of all 15 signatures. |
+| `/kwintencirkel` | Interactive circle of fifths: signature, parallel, dominant and subdominant, enharmonic spellings, scale playback and a clicking quiz. |
+| `/toonladders-bouwen` | Building scales: the whole/half step patterns for major and the three minor scales, a keyboard explorer, and a build-it-yourself exercise. |
 | `/toonladders-oefenen` | Exercises: key signature to scale name, scale name to number of accidentals, and parallel major/minor. Every answer explains the rule. |
 | `/maatsoorten` | Time signatures with a metronome, accents and subdivisions, the ways to fill a bar and a beat, and a 3/4 versus 6/8 comparison. |
+| `/ritme` | Rhythm reading: note and rest values, the dot and the tie, and a listen-and-pick exercise with one-line notation. |
 
 Conventions used throughout: Do Re Mi or letter names (the reader can switch; the choice is kept in `localStorage`), "groot" and "klein" for major and minor, "kruis" and "mol" for sharp and flat.
 
@@ -32,6 +37,8 @@ npm run preview   # serve dist/ locally
 
 - `src/layouts/Base.astro`: document shell, navigation, footer, font imports.
 - `src/styles/global.css`: design tokens (light and dark) and the site chrome. Pages reuse these tokens.
+- `src/lib/music.js` and `src/lib/rhythm.js`: shared helpers for the newer lessons (note names, pitches, staff and keyboard drawing, tones, practice helpers, one-line rhythm notation and bar generation).
+- `src/styles/components.css`: shared UI building blocks for the newer lessons.
 - `src/pages/*.astro`: one file per page. Page-specific CSS is global to that page (`is:global`) because much of the markup is built by the page's own script. Scripts are `is:inline` so they run unchanged.
 - Fonts are self-hosted through `@fontsource` packages (Bricolage Grotesque, DM Sans, Noto Music), so the site makes no requests to Google.
 - Audio is synthesized with the Web Audio API. It only starts after a click.

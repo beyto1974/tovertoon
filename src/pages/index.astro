@@ -3,24 +3,29 @@ import Base from "../layouts/Base.astro";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const pages = [
+const groups = [
   {
-    href: `${base}/voortekening`,
-    kind: "Uitleg",
-    title: "Voortekening",
-    text: "Sleep van zeven mollen naar zeven kruisen en zie de notenbalk veranderen. Leer de twee regels waarmee je de toonsoort in vijf seconden vindt.",
+    title: "Noten lezen",
+    pages: [
+      { href: "notenbalk", kind: "Uitleg + oefenen", title: "Notenbalk lezen", text: "G- en F-sleutel, lijnen, ruimten en hulplijntjes. Klik een plek en hoor de toon." },
+      { href: "intervallen", kind: "Uitleg + oefenen", title: "Intervallen", text: "De afstand tussen twee noten: tellen, benoemen en herkennen, ook op gehoor." },
+    ],
   },
   {
-    href: `${base}/toonladders-oefenen`,
-    kind: "Oefenen",
-    title: "Toonladders oefenen",
-    text: "Van voortekening naar toonladder en terug, plus de parallelle klein- of grootladder. Elk antwoord krijgt uitleg met de regel erbij.",
+    title: "Toonsoorten en toonladders",
+    pages: [
+      { href: "voortekening", kind: "Uitleg", title: "Voortekening", text: "Van zeven mollen naar zeven kruisen. De twee regels om de toonsoort in vijf seconden te vinden." },
+      { href: "kwintencirkel", kind: "Uitleg + oefenen", title: "Kwintencirkel", text: "Klik een toonsoort: voortekening, parallel, dominant en subdominant." },
+      { href: "toonladders-bouwen", kind: "Uitleg + oefenen", title: "Toonladders bouwen", text: "Het patroon van hele en halve tonen. Bouw de toonladder op een klavier." },
+      { href: "toonladders-oefenen", kind: "Oefenen", title: "Toonladders oefenen", text: "Van voortekening naar toonladder en terug, met uitleg bij elk antwoord." },
+    ],
   },
   {
-    href: `${base}/maatsoorten`,
-    kind: "Uitleg",
-    title: "Maatsoorten",
-    text: "Luister naar 2/4, 3/4, 4/4, 6/8 en meer, kijk hoe een maat zich laat opdelen en hoe je één tel op verschillende manieren vult.",
+    title: "Tijd en ritme",
+    pages: [
+      { href: "maatsoorten", kind: "Uitleg", title: "Maatsoorten", text: "2/4, 3/4, 4/4, 6/8 en meer: hoor hoe een maat telt en zich laat opdelen." },
+      { href: "ritme", kind: "Uitleg + oefenen", title: "Ritme lezen", text: "Noten, rusten, punt en bindboog. Hoor een ritme en kies het notenbeeld." },
+    ],
   },
 ];
 ---
@@ -31,27 +36,29 @@ const pages = [
       <p class="lead">Korte, interactieve lessen met geluid en oefeningen. Je hoeft niets te installeren en niets in te vullen.</p>
     </header>
 
-    <section aria-labelledby="index">
-      <h2 id="index">Alle lessen</h2>
-      <ul class="cards">
-        {pages.map((p) => (
-          <li>
-            <a class="card" href={p.href}>
-              <span class="kind">{p.kind}</span>
-              <b>{p.title}</b>
-              <span class="text">{p.text}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
+    {groups.map((g) => (
+      <section aria-labelledby={`g-${g.title}`}>
+        <h2 id={`g-${g.title}`}>{g.title}</h2>
+        <ul class="cards">
+          {g.pages.map((p) => (
+            <li>
+              <a class="card" href={`${base}/${p.href}`}>
+                <span class="kind">{p.kind}</span>
+                <b>{p.title}</b>
+                <span class="text">{p.text}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
 
     <section class="about">
       <h2>Handig om te weten</h2>
       <ul>
         <li>Noten staan als <b>Do Re Mi</b> of als letters (ABC). Je keuze wordt onthouden in je browser.</li>
         <li>Geluid start pas na een klik, zoals browsers het vragen.</li>
-        <li>Een goede volgorde: eerst <b>Voortekening</b>, dan <b>Toonladders oefenen</b>, daarna <b>Maatsoorten</b>.</li>
+        <li>Een goede volgorde: Notenbalk, Intervallen, Voortekening, Kwintencirkel, Toonladders, dan Maatsoorten en Ritme.</li>
       </ul>
     </section>
   </main>
