@@ -1,0 +1,178 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Notenbalk lezen" description="Leer noten lezen op de notenbalk in de G- en F-sleutel, met hulplijntjes, en oefen met geluid.">
+  <main>
+    <header>
+      <h1>Notenbalk lezen</h1>
+      <p class="muted">Een notenbalk heeft vijf lijnen en vier ruimten. Hoe hoger een noot staat, hoe hoger de toon. De sleutel vooraan zegt welke noot op welke lijn hoort.</p>
+    </header>
+
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+      </div></div>
+
+    <section class="box" aria-labelledby="h-verken">
+      <h2 id="h-verken">Verken de notenbalk</h2>
+      <p class="muted">Kies een sleutel en klik op een lijn of een ruimte. Je ziet de naam en hoort de toon. De octaafnummers kennen alleen de naam: Do4 is de middelste Do.</p>
+      <div class="bar">
+        <div class="seg" id="vclef" role="group" aria-label="Sleutel">
+          <button type="button" data-v="treble">G-sleutel</button><button type="button" data-v="bass">F-sleutel</button>
+        </div>
+        <button type="button" class="pill" id="middle">Toon middelste Do</button>
+      </div>
+      <div class="staffwrap"><svg id="vstaff" role="img" aria-label="Notenbalk om te verkennen"></svg></div>
+      <p id="vname" class="big" aria-live="polite"></p>
+    </section>
+
+    <section class="two" aria-label="Lijnen en ruimten">
+      <div class="box"><h3>G-sleutel (vioolsleutel)</h3><p class="muted">De krul draait om de tweede lijn: dat is Sol.</p>
+        <div class="tblwrap"><table><tbody>
+          <tr><th>Lijnen, van onder</th><td id="tl"></td></tr>
+          <tr><th>Ruimten, van onder</th><td id="ts"></td></tr>
+        </tbody></table></div></div>
+      <div class="box"><h3>F-sleutel (bassleutel)</h3><p class="muted">De twee puntjes omarmen de vierde lijn: dat is Fa.</p>
+        <div class="tblwrap"><table><tbody>
+          <tr><th>Lijnen, van onder</th><td id="bl"></td></tr>
+          <tr><th>Ruimten, van onder</th><td id="bs"></td></tr>
+        </tbody></table></div></div>
+    </section>
+
+    <section class="box">
+      <h2>Hulplijntjes</h2>
+      <p>Noten boven of onder de balk krijgen een kort lijntje erbij: een hulplijntje. Zo ligt de middelste Do één hulplijntje onder de G-sleutel en één hulplijntje boven de F-sleutel. Het is dezelfde toon, op twee plekken geschreven.</p>
+    </section>
+
+    <section class="box" aria-labelledby="h-oef">
+      <h2 id="h-oef">Oefenen</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Sleutel</span><div class="seg" id="oclef" role="group" aria-label="Sleutel voor de oefening">
+          <button type="button" data-v="treble">G-sleutel</button><button type="button" data-v="bass">F-sleutel</button><button type="button" data-v="both">Beide</button></div></div>
+        <div class="grp"><span class="lab">Bereik</span><div class="seg" id="orange" role="group" aria-label="Bereik">
+          <button type="button" data-v="in">In de balk</button><button type="button" data-v="ledger">Met hulplijntjes</button></div></div>
+        <label class="grp"><span class="lab">Geluid</span><span><input type="checkbox" id="osound" checked> Speel de noot</span></label>
+      </div>
+      <h3 id="oq">Welke noot is dit?</h3>
+      <div class="staffwrap"><svg id="ostaff" role="img" aria-label="Notenbalk met een noot"></svg></div>
+      <div class="opts n7" id="oopts"></div>
+      <div class="fb" id="ofb" aria-live="polite"></div>
+      <div class="stats" id="ostats"></div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .big { font: 800 28px / 1.1 var(--display); min-height: 1.2em; text-align: center; }
+  th[scope], .tblwrap th { white-space: nowrap; }
+  #vstaff .hit { fill: transparent; cursor: pointer; }
+  #vstaff .hit:hover { fill: var(--hover); opacity: 0.8; }
+</style>
+
+<script>
+  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, playPitch, staff, CLEFS, GAP, STAFF_BOTTOM, yOf, el, store, save, seg, rnd, makeStats, feedback, markOptions } from "../lib/music.js";
+
+  let vclef = store("nb-vclef", "treble", ["treble", "bass"]);
+  let vsel = null;
+
+  // ---- explore ----
+  function drawVerken() {
+    const c = CLEFS[vclef];
+    const st = staff($("vstaff"), { clef: vclef });
+    const nx = 200;
+    // clickable zones for every diatonic position from 5 steps below to 5 above the staff
+    for (let d = c.d0 - 6; d <= c.d0 + 14; d++) {
+      const y = yOf(vclef, d);
+      const r = el("rect", { class: "hit", x: 70, y: y - GAP / 4, width: 260, height: GAP / 2, "data-d": d });
+      r.addEventListener("click", () => select(d));
+      $("vstaff").append(r);
+    }
+    if (vsel !== null) {
+      const p = { d: vsel, alter: 0 };
+      st.note(p, nx, { stem: false });
+      $("vname").textContent = nm(letterOf(p)) + octaveOf(p);
+    } else $("vname").textContent = "Klik op een lijn of ruimte";
+  }
+  function select(d) {
+    vsel = d;
+    drawVerken();
+    playPitch({ d, alter: 0 });
+  }
+  seg($("vclef"), vclef, (v) => { vclef = v; save("nb-vclef", v); vsel = null; drawVerken(); });
+  $("middle").onclick = () => { vsel = pitch("C", 4).d; drawVerken(); playPitch({ d: vsel, alter: 0 }); };
+
+  // ---- tables ----
+  function tables() {
+    const list = (clef, lines) => {
+      const d0 = CLEFS[clef].d0;
+      const out = [];
+      for (let i = 0; i < 5; i++) out.push(nm(letterOf({ d: d0 + (lines ? 2 * i : 2 * i + 1) })));
+      return out.slice(0, lines ? 5 : 4).join(" – ");
+    };
+    $("tl").textContent = list("treble", true);
+    $("ts").textContent = list("treble", false);
+    $("bl").textContent = list("bass", true);
+    $("bs").textContent = list("bass", false);
+  }
+
+  // ---- exercise ----
+  let oclef = store("nb-oclef", "treble", ["treble", "bass", "both"]);
+  let orange = store("nb-orange", "in", ["in", "ledger"]);
+  const stats = makeStats($("ostats"), "nb-best");
+  let q = null;
+  function ordinal(n) { return n + "e"; }
+  function where(clef, d) {
+    const s = d - CLEFS[clef].d0;
+    if (s >= 0 && s <= 8) return s % 2 === 0 ? `op de ${ordinal(s / 2 + 1)} lijn van onder` : `in de ${ordinal((s + 1) / 2)} ruimte van onder`;
+    if (s < 0) return s % 2 === 0 ? `op het ${ordinal(-s / 2)} hulplijntje onder de balk` : (s === -1 ? "net onder de balk" : `onder het ${ordinal((-s - 1) / 2)} hulplijntje`);
+    const t = s - 8;
+    return t % 2 === 0 ? `op het ${ordinal(t / 2)} hulplijntje boven de balk` : (t === 1 ? "net boven de balk" : `boven het ${ordinal((t - 1) / 2)} hulplijntje`);
+  }
+  function make() {
+    const clef = oclef === "both" ? (rnd(2) ? "treble" : "bass") : oclef;
+    const d0 = CLEFS[clef].d0;
+    const lo = orange === "in" ? 0 : -4, hi = orange === "in" ? 8 : 12;
+    let d;
+    do { d = d0 + lo + rnd(hi - lo + 1); } while (q && q.d === d && q.clef === clef);
+    return { clef, d, done: false };
+  }
+  function render() {
+    const st = staff($("ostaff"), { clef: q.clef });
+    st.note({ d: q.d, alter: 0 }, 200, { stem: false });
+    const o = $("oopts");
+    o.innerHTML = "";
+    LETTERS.forEach((L, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.v = i;
+      b.textContent = nm(L);
+      b.onclick = () => answer(i);
+      o.append(b);
+    });
+    $("ofb").innerHTML = "";
+    if (q.done) result();
+  }
+  function result() {
+    const correct = ((q.d % 7) + 7) % 7;
+    markOptions($("oopts"), correct, q.picked);
+    const ok = q.picked === correct;
+    const name = nm(LETTERS[correct]) + octaveOf({ d: q.d });
+    feedback($("ofb"), ok, ok ? "Goed zo!" : `Het was ${name}.`, `${name} staat ${where(q.clef, q.d)} in de ${q.clef === "treble" ? "G" : "F"}-sleutel.`, next);
+  }
+  function answer(i) {
+    if (q.done) return;
+    q.done = true;
+    q.picked = i;
+    stats.record(i === ((q.d % 7) + 7) % 7);
+    if ($("osound").checked) playPitch({ d: q.d, alter: 0 });
+    result();
+  }
+  function next() { q = make(); render(); if ($("osound").checked) playPitch({ d: q.d, alter: 0 }); }
+  seg($("oclef"), oclef, (v) => { oclef = v; save("nb-oclef", v); q = null; next(); });
+  seg($("orange"), orange, (v) => { orange = v; save("nb-orange", v); q = null; next(); });
+
+  bindNames($("names"), () => { tables(); drawVerken(); render(); });
+  tables(); drawVerken(); q = make(); render();
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}\u{1D122}").then(() => { drawVerken(); render(); }).catch(() => {});
+</script>
