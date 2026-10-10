@@ -91,6 +91,10 @@ import "../styles/components.css";
     return s;
   };
   const nameOf = (r, p, a = 0) => keyNames(sigOf(p, a))[r];
+  // A neighbour is written on the same side (sharps or flats) as the key it is compared with, when that spelling exists.
+  const spellings = (p) => [sigOf(p, 0), ...(ambiguous(p) ? [sigOf(p, 1)] : [])].filter((x) => Math.abs(x) <= 7);
+  const sigNear = (p, side) => { const c = spellings(p); return c.find((x) => Math.sign(x) === side) ?? c[0]; };
+  const nameNear = (r, p, side) => keyNames(sigNear(p, side))[r];
   const label = (r, p) => {
     const a = nm(nameOf(r, p));
     return ambiguous(p) ? a + " / " + nm(nameOf(r, p, 1)) : a;
@@ -157,9 +161,9 @@ import "../styles/components.css";
     $("ialt").hidden = !ambiguous(pos);
     const other = ring === "maj" ? "min" : "maj";
     $("ipar").textContent = nm(k[other]) + " " + kindWord(other);
-    const dp = mod(pos + 1), sp = mod(pos - 1);
-    $("idom").textContent = nm(nameOf(ring, dp)) + " " + kindWord(ring) + " (" + unit(sigOf(dp, 0)).toLowerCase() + ")";
-    $("isub").textContent = nm(nameOf(ring, sp)) + " " + kindWord(ring) + " (" + unit(sigOf(sp, 0)).toLowerCase() + ")";
+    const dp = mod(pos + 1), sp = mod(pos - 1), side = Math.sign(v);
+    $("idom").textContent = nm(nameNear(ring, dp, side)) + " " + kindWord(ring) + " (" + unit(sigNear(dp, side)).toLowerCase() + ")";
+    $("isub").textContent = nm(nameNear(ring, sp, side)) + " " + kindWord(ring) + " (" + unit(sigNear(sp, side)).toLowerCase() + ")";
     paint();
   }
   function playScale() {
@@ -203,7 +207,7 @@ import "../styles/components.css";
     const ok = q.pr === ar && q.pp === ap;
     wedges[ar][ap].path.setAttribute("class", "w good");
     if (!ok) wedges[q.pr][q.pp].path.setAttribute("class", "w bad");
-    const ans = nm(nameOf(ar, ap)) + " " + kindWord(ar);
+    const ans = nm(nameNear(ar, ap, Math.sign(sigOf(q.p, 0)))) + " " + kindWord(ar);
     const why = q.t === "dom" ? "Dominant: een kwint omhoog, dus één stap met de klok mee." : q.t === "sub" ? "Subdominant: een kwint omlaag, dus één stap tegen de klok in." : "Parallel: zelfde voortekening, de andere ring op dezelfde plek.";
     feedback($("qfb"), ok, ok ? "Goed zo!" : `Het was ${ans}.`, why, () => { q = makeQ(); quizRender(); });
   }
