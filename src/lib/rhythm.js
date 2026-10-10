@@ -9,7 +9,7 @@ const STEM = 52;
 const beams = (dur) => (dur === 1 ? 2 : dur === 2 || dur === 3 ? 1 : 0);
 
 function restShape(g, x, y, dur) {
-  const base = dur >= 4 ? "ink" : "ink";
+  const base = "ink";
   const stroke = { class: "stem", fill: "none", "stroke-width": 3 };
   if (dur === 8 || dur === 12) {
     g.append(el("rect", { class: base, x: x - 9, y: y - 7, width: 18, height: 7, rx: 1 }));
@@ -31,7 +31,7 @@ function restShape(g, x, y, dur) {
 
 /**
  * Draws events [{on, dur, rest}] on a one-line staff into svg.
- * opts: {W, time: [4,4] or null, bars: number of 16ths per bar (default 16)}
+ * opts: {W, time: [4,4] or null, total: length of the drawing in sixteenths (default 16)}
  */
 export function drawRhythm(svg, events, opts = {}) {
   const W = opts.W || 340;
@@ -90,7 +90,7 @@ export function drawRhythm(svg, events, opts = {}) {
       if (e.dur === 3 || e.dur === 6 || e.dur === 12) g.append(el("circle", { class: "ink", cx: x + 16, cy: LINE - 5, r: 2.8 }));
     }
     svg.append(g);
-    if (e.tie) {
+    if (e.tie && events[i + 1]) {
       const x2 = xOf(events[i + 1].on);
       svg.append(el("path", { class: "stem", fill: "none", "stroke-width": 2.2, d: `M${x + 6} ${LINE + 12} Q${(x + x2) / 2} ${LINE + 30} ${x2 - 6} ${LINE + 12}` }));
     }
@@ -128,6 +128,8 @@ export function makeBar(level) {
   return events;
 }
 export const signature = (events) => events.map((e) => `${e.on}:${e.dur}${e.rest ? "r" : ""}`).join(" ");
+/** What can be heard: only the sounding notes, with their lengths. Rests are silence and add nothing. */
+export const audibleKey = (events) => events.filter((e) => !e.rest).map((e) => `${e.on}:${e.dur}`).join(" ");
 /** A near-miss: change one beat of the bar. Returns null when that is not possible. */
 export function mutate(events, level) {
   const b = rnd(4);
@@ -140,12 +142,12 @@ export function mutate(events, level) {
   return signature(out) === signature(events) ? null : out;
 }
 export function distractors(events, level, n = 3) {
-  const seen = new Set([signature(events)]);
+  const seen = new Set([audibleKey(events)]);
   const out = [];
   for (let t = 0; t < 200 && out.length < n; t++) {
     const m = t < 120 ? mutate(events, level) : makeBar(level);
     if (!m) continue;
-    const s = signature(m);
+    const s = audibleKey(m);
     if (seen.has(s)) continue;
     seen.add(s);
     out.push(m);
@@ -160,6 +162,7 @@ function blip(c, t, f, v, d) {
   o.frequency.value = f;
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(v, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(v * 0.7, t + Math.max(0.02, d - 0.05)); // hold: the note lasts as long as it is written
   g.gain.exponentialRampToValueAtTime(0.001, t + d);
   o.connect(g);
   g.connect(c.destination);
@@ -174,7 +177,7 @@ export function playBar(events, bpm, countIn) {
   const t0 = c.currentTime + 0.08 + (countIn ? 4 * beat : 0);
   if (countIn) for (let i = 0; i < 4; i++) blip(c, c.currentTime + 0.08 + i * beat, i === 0 ? 1500 : 1100, 0.18, 0.05);
   for (let i = 0; i < 4; i++) blip(c, t0 + i * beat, 900, 0.05, 0.04); // soft pulse under the rhythm
-  events.forEach((e) => { if (!e.rest) blip(c, t0 + e.on * u, 560, 0.4, Math.min(0.4, e.dur * u)); });
+  events.forEach((e) => { if (!e.rest) blip(c, t0 + e.on * u, 560, 0.4, Math.max(0.06, e.dur * u * 0.92)); });
   return (countIn ? 8 : 4) * beat;
 }
 

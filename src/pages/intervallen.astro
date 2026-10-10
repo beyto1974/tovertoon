@@ -106,23 +106,15 @@ import "../styles/components.css";
     if (Math.abs(alter) > 1) return null;
     return { d, alter };
   }
-  const ivName = (iv) => iv.name.replace("reine octaaf", "reine octaaf").replace("reine prime", "reine prime");
-
   // ---- table ----
   const C4 = pitch("C", 4);
-  function drawStaffPair(svg, low, high) {
-    const clef = "treble";
-    const st = staff(svg, { clef, width: 340 });
-    if (low) st.note(low, 160, { stem: false });
-    if (high) st.note(high, low && high.d === low.d ? 200 : 160, { stem: false });
-    // second note shifted right when the interval is a second so heads do not collide
-    return st;
-  }
   function pair(svg, low, high) {
     const st = staff(svg, { clef: "treble", width: 340 });
-    const close = high.d - low.d === 1;
-    st.note(low, 180, { stem: false });
-    st.note(high, close ? 206 : 180, { stem: false });
+    const gap = high.d - low.d;
+    const close = gap <= 1; // seconds and primes: the upper head moves to the right of the lower one
+    const lowAcc = 180 - 19;
+    st.note(low, 180, { stem: false, accX: lowAcc });
+    st.note(high, close ? 206 : 180, { stem: false, accX: close ? lowAcc - (low.alter ? 16 : 0) : undefined, noAcc: gap === 0 });
   }
   function tableRows() {
     const tb = $("tbl").querySelector("tbody");
@@ -131,8 +123,12 @@ import "../styles/components.css";
       const up = upper(C4, iv);
       const tr = document.createElement("tr");
       tr.dataset.id = iv.id;
+      tr.tabIndex = 0;
+      tr.setAttribute("role", "button");
+      tr.setAttribute("aria-label", `${iv.name}, speel`);
       tr.innerHTML = `<td><b>${iv.name}</b></td><td>${iv.semis}</td><td>${up ? nm("C") + " – " + nm(letterOf(up) + accText(up.alter)) : "–"}</td>`;
       tr.onclick = () => { showRow(iv); };
+      tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showRow(iv); } };
       tb.append(tr);
     });
   }
@@ -187,7 +183,12 @@ import "../styles/components.css";
   let olevel = store("iv-olevel", "basic", ["basic", "all"]);
   const stats = makeStats($("ostats"), "iv-best");
   let q = null;
-  function pool() { return olevel === "basic" ? BASIC.map((id) => byId[id]) : IV; }
+  // By ear the overmatige kwart and verminderde kwint cannot be told apart, so they become one "tritonus".
+  const label = (iv) => (omode === "ear" && iv.id === "o4" ? "tritonus" : iv.name);
+  function pool() {
+    const all = olevel === "basic" ? BASIC.map((id) => byId[id]) : IV;
+    return omode === "ear" ? all.filter((iv) => iv.id !== "v5") : all;
+  }
   function make() {
     for (let t = 0; t < 200; t++) {
       const iv = pool()[rnd(pool().length)];
@@ -220,7 +221,7 @@ import "../styles/components.css";
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.v = iv.id;
-      b.textContent = iv.name;
+      b.textContent = label(iv);
       b.onclick = () => answer(iv.id);
       o.append(b);
     });
@@ -231,12 +232,13 @@ import "../styles/components.css";
   function explain() {
     const iv = q.iv;
     const letters = iv.size;
-    return `${pitchName(q.low)} naar ${pitchName(q.up)} overspant ${letters} letters en ${iv.semis} halve ${iv.semis === 1 ? "toon" : "tonen"}: dat is een ${iv.name}.`;
+    const tail = omode === "ear" && iv.id === "o4" ? "een tritonus (overmatige kwart of verminderde kwint, ze klinken hetzelfde)" : `een ${iv.name}`;
+    return `${pitchName(q.low)} naar ${pitchName(q.up)} overspant ${letters} letters en ${iv.semis} halve ${iv.semis === 1 ? "toon" : "tonen"}: dat is ${tail}.`;
   }
   function result() {
     markOptions($("oopts"), q.iv.id, q.picked);
     const ok = q.picked === q.iv.id;
-    feedback($("ofb"), ok, ok ? "Goed zo!" : `Het was een ${q.iv.name}.`, explain(), next);
+    feedback($("ofb"), ok, ok ? "Goed zo!" : `Het was een ${label(q.iv)}.`, explain(), next);
     if (omode === "ear") { $("osw").hidden = false; pair($("ostaff"), q.low, q.up); }
   }
   function answer(id) {
@@ -251,7 +253,7 @@ import "../styles/components.css";
   seg($("omode"), omode, (v) => { omode = v; save("iv-omode", v); q = make(); render(); hear(); });
   seg($("olevel"), olevel, (v) => { olevel = v; save("iv-olevel", v); q = make(); render(); hear(); });
 
-  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); q.opts = null; render(); });
+  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); render(); });
   function showRowQuiet() {
     $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === rowSel.id));
     const up = upper(C4, rowSel);

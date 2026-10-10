@@ -29,6 +29,7 @@ select { font: 600 15px var(--body); color: var(--ink); background: var(--card);
 .staffwrap svg { display: block; width: 100%; max-width: 460px; min-width: 300px; height: auto; margin: 0 auto; }
 .line { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .head { fill: var(--ink); }
+.ink { fill: var(--ink); }
 .head.hollow { fill: var(--card); stroke: var(--ink); stroke-width: 2.4; }
 .stem { stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
 .target .head { fill: var(--violet); }

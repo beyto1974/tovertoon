@@ -36,9 +36,9 @@ const groups = [
       <p class="lead">Korte, interactieve lessen met geluid en oefeningen. Je hoeft niets te installeren en niets in te vullen.</p>
     </header>
 
-    {groups.map((g) => (
-      <section aria-labelledby={`g-${g.title}`}>
-        <h2 id={`g-${g.title}`}>{g.title}</h2>
+    {groups.map((g, gi) => (
+      <section aria-labelledby={`group-${gi}`}>
+        <h2 id={`group-${gi}`}>{g.title}</h2>
         <ul class="cards">
           {g.pages.map((p) => (
             <li>

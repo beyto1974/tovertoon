@@ -165,7 +165,7 @@ export function staff(svg, opts = {}) {
       // ledger lines
       for (let d = d0 - 2; d >= p.d; d -= 2) g.append(el("line", { class: "line", x1: nx - 13, x2: nx + 13, y1: yOf(clef, d), y2: yOf(clef, d) }));
       for (let d = d0 + 10; d <= p.d; d += 2) g.append(el("line", { class: "line", x1: nx - 13, x2: nx + 13, y1: yOf(clef, d), y2: yOf(clef, d) }));
-      if (p.alter) accGlyph(g, p.alter < 0, nx - 19, y);
+      if (p.alter && !o.noAcc) accGlyph(g, p.alter < 0, o.accX ?? nx - 19, y);
       const head = el("ellipse", { class: "head" + (o.hollow ? " hollow" : ""), cx: nx, cy: y, rx: 9, ry: 6.4, transform: `rotate(-20 ${nx} ${y})` });
       g.append(head);
       if (o.stem !== false) {
@@ -178,11 +178,6 @@ export function staff(svg, opts = {}) {
     },
   };
   return api;
-}
-
-/** Standard styles for staff shapes, injected once so pages only need the SVG. */
-export function staffCss() {
-  return `.line{stroke:var(--ink);stroke-width:2;stroke-linecap:round}.head{fill:var(--ink)}.head.hollow{fill:var(--card);stroke:var(--ink);stroke-width:2.4}.stem{stroke:var(--ink);stroke-width:2.4;stroke-linecap:round}`;
 }
 
 // ---- practice helpers ----
