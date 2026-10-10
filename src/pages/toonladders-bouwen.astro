@@ -146,13 +146,14 @@ import "../styles/components.css";
       const t = list[rnd(list.length)];
       if (q && q.t.L === t.L && q.t.alter === t.alter && q.kind === k) continue;
       const ps = scalePitches(tonicPitch(t), k);
-      return { t, kind: k, ps, i: 1, errors: 0, done: false, hinted: false };
+      return { t, kind: k, ps, i: 1, errors: 0, done: false, hinted: false, recorded: false };
     }
   }
   const spell = (p) => nm(letterOf(p) + accText(p.alter));
+  const patternText = (k) => SCALE_PATTERNS[k].slice(1).map((v, i) => stepLabel(v - SCALE_PATTERNS[k][i])).join(" ");
   function oRender() {
     $("oq").textContent = `Bouw ${nm(tonicName(q.t))} ${KIND_NAME[q.kind]}`;
-    $("ohint").textContent = "Klik de noten van laag naar hoog. De beginnoot staat al aan.";
+    $("ohint").textContent = q.hinted ? `Stappen: ${patternText(q.kind)}. Elke H is twee toetsen, h is één toets.` : "Klik de noten van laag naar hoog. De beginnoot staat al aan.";
     const seq = $("seq");
     seq.innerHTML = "";
     q.ps.forEach((p, i) => {
@@ -176,10 +177,10 @@ import "../styles/components.css";
       q.i++;
       if (q.i === q.ps.length) {
         q.done = true;
-        stats.record(q.errors === 0);
+        if (!q.recorded) { q.recorded = true; stats.record(q.errors === 0); } // a round counts once, however often it is repeated
         oRender();
         playSequence(q.ps, 0.3);
-        const pat = SCALE_PATTERNS[q.kind].slice(1).map((v, i) => stepLabel(v - SCALE_PATTERNS[q.kind][i])).join(" ");
+        const pat = patternText(q.kind);
         feedback($("ofb"), q.errors === 0, q.errors === 0 ? "Zonder fout!" : `Gelukt, met ${q.errors} ${q.errors === 1 ? "fout" : "fouten"}.`, `${nm(tonicName(q.t))} ${KIND_NAME[q.kind]}: ${q.ps.map(spell).join(" – ")}. Stappen: ${pat}.`, () => { q = make(); oRender(); });
         return;
       }
@@ -190,11 +191,8 @@ import "../styles/components.css";
     }
     oRender();
   }
-  $("reset").onclick = () => { q.i = 1; q.errors = 0; q.done = false; q.flash = null; oRender(); };
-  $("show").onclick = () => {
-    const pat = SCALE_PATTERNS[q.kind].slice(1).map((v, i) => stepLabel(v - SCALE_PATTERNS[q.kind][i])).join(" ");
-    $("ohint").textContent = `Stappen: ${pat}. Elke stap H is twee toetsen, h is één toets.`;
-  };
+  $("reset").onclick = () => { q.i = 1; q.done = false; q.flash = null; $("ofb").innerHTML = ""; oRender(); };
+  $("show").onclick = () => { q.hinted = true; oRender(); };
   seg($("okind"), okind, (v) => { okind = v; save("tb-okind", v); q = make(); oRender(); });
   seg($("olevel"), olevel, (v) => { olevel = v; save("tb-olevel", v); q = make(); oRender(); });
 
