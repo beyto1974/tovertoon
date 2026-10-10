@@ -262,3 +262,52 @@ export function scalePitches(tonic, kind) {
 export function playSequence(ps, step = 0.42) {
   ps.forEach((p, i) => playPitch(p, i * step, 0.9, 0.45));
 }
+
+// ---- piano keyboard (C4 to C6) ----
+const BLACK_PC = [1, 3, 6, 8, 10];
+/**
+ * Draws a two-octave keyboard into `svg`. Returns {mark(map), keys}:
+ * map is {midi: {cls, label}}; cls is one of "scale", "tonic", "good", "bad".
+ */
+export function keyboard(svg, onKey) {
+  const LOW = 60, HIGH = 84;
+  const W = 700, H = 170;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H + 24}`);
+  svg.innerHTML = "";
+  const whites = [];
+  for (let m = LOW; m <= HIGH; m++) if (!BLACK_PC.includes(m % 12)) whites.push(m);
+  const ww = W / whites.length;
+  const keys = {};
+  const g = el("g");
+  svg.append(g);
+  const mk = (m, x, w, h, black) => {
+    const r = el("rect", { class: "key " + (black ? "bk" : "wk"), x, y: 0, width: w, height: h, rx: 6, "data-m": m, tabindex: 0, role: "button", "aria-label": "toets " + m });
+    const t = el("text", { class: "kl", x: x + w / 2, y: black ? h - 12 : h - 12, "text-anchor": "middle" });
+    const act = () => onKey && onKey(m);
+    r.addEventListener("click", act);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+    keys[m] = { r, t, black };
+    return [r, t];
+  };
+  whites.forEach((m, i) => { const [r, t] = mk(m, i * ww + 1, ww - 2, H, false); g.append(r); keys[m].t = t; });
+  const bw = ww * 0.6;
+  for (let m = LOW; m <= HIGH; m++) {
+    if (!BLACK_PC.includes(m % 12)) continue;
+    const left = whites.indexOf(m - 1);
+    const [r, t] = mk(m, (left + 1) * ww - bw / 2, bw, H * 0.6, true);
+    g.append(r);
+  }
+  // labels go on top of all keys
+  Object.values(keys).forEach((k) => svg.append(k.t));
+  return {
+    keys,
+    mark(map) {
+      Object.entries(keys).forEach(([m, k]) => {
+        const v = map && map[m];
+        k.r.setAttribute("class", "key " + (k.black ? "bk" : "wk") + (v ? " " + v.cls : ""));
+        k.t.textContent = v && v.label ? v.label : "";
+        k.t.setAttribute("class", "kl" + (k.black ? " onblack" : ""));
+      });
+    },
+  };
+}

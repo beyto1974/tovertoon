@@ -53,3 +53,17 @@ th { font: 600 12px var(--body); letter-spacing: 0.08em; text-transform: upperca
 .tblwrap { overflow-x: auto; }
 ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.kbd { display: block; width: 100%; max-width: 700px; margin: 0 auto; height: auto; }
+.kbd .key { stroke: var(--ink); stroke-width: 2; cursor: pointer; }
+.kbd .wk { fill: var(--card); }
+.kbd .bk { fill: var(--ink); }
+.kbd .wk:hover { fill: var(--hover); }
+.kbd .bk:hover { fill: var(--violet); }
+.kbd .scale { fill: var(--violet); }
+.kbd .tonic { fill: var(--sun); }
+.kbd .bk.tonic { fill: var(--sun); }
+.kbd .good { fill: var(--good); }
+.kbd .bad { fill: var(--bad); }
+.kbd .kl { font: 800 13px var(--display); fill: var(--ink); pointer-events: none; }
+.kbd .kl.onblack { fill: #fff; }
+.kbd .scale ~ .kl { }

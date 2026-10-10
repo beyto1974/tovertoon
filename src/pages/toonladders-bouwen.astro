@@ -1,0 +1,204 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Toonladders bouwen" description="Bouw groot en klein toonladders met het patroon van hele en halve tonen. Verken op een klavier met geluid en oefen door de noten aan te klikken.">
+  <main>
+    <header>
+      <h1>Toonladders bouwen</h1>
+      <p class="muted">Een toonladder is een rij van acht noten met vaste afstanden: hele tonen (H) en halve tonen (h). Met dat patroon bouw je een toonladder op elke noot.</p>
+    </header>
+
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+      </div></div>
+
+    <section class="box" aria-labelledby="h-patroon">
+      <h2 id="h-patroon">Het patroon</h2>
+      <div class="tblwrap"><table id="pat">
+        <thead><tr><th>Toonladder</th><th>Stappen</th><th>Kenmerk</th></tr></thead>
+        <tbody>
+          <tr><td><b>Groot</b></td><td class="steps">H H h H H H h</td><td>Helder. Halve tonen tussen 3–4 en 7–8.</td></tr>
+          <tr><td><b>Natuurlijk klein</b></td><td class="steps">H h H H h H H</td><td>Halve tonen tussen 2–3 en 5–6.</td></tr>
+          <tr><td><b>Harmonisch klein</b></td><td class="steps">H h H H h 1½ h</td><td>Zevende noot een halve toon hoger: een stap van anderhalve toon.</td></tr>
+          <tr><td><b>Melodisch klein</b> (omhoog)</td><td class="steps">H h H H H H h</td><td>Zesde en zevende noot een halve toon hoger.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">Een hele toon is twee halve tonen: op het klavier is dat twee toetsen verder, een halve toon is de volgende toets, met zwart en wit meegeteld.</p>
+    </section>
+
+    <section class="box" aria-labelledby="h-verken">
+      <h2 id="h-verken">Verken</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Beginnoot</span><select id="tonic" aria-label="Beginnoot"></select></div>
+        <div class="grp"><span class="lab">Toonladder</span><select id="kind" aria-label="Soort toonladder">
+          <option value="maj">groot</option><option value="nat">natuurlijk klein</option><option value="har">harmonisch klein</option><option value="mel">melodisch klein</option></select></div>
+        <button type="button" class="go" id="play">▶ Speel</button>
+      </div>
+      <div class="stepsrow" id="stepsrow" aria-label="Stappen"></div>
+      <div class="staffwrap"><svg id="sstaff" role="img" aria-label="Toonladder op de notenbalk" style="max-width:600px"></svg></div>
+      <svg id="kbd" class="kbd" role="group" aria-label="Klavier"></svg>
+      <p id="sname" class="big" aria-live="polite"></p>
+    </section>
+
+    <section class="box" aria-labelledby="h-oef">
+      <h2 id="h-oef">Oefenen: bouw de toonladder</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Soort</span><div class="seg" id="okind" role="group" aria-label="Soort">
+          <button type="button" data-v="maj">Groot</button><button type="button" data-v="nat">Klein</button><button type="button" data-v="all">Alles</button></div></div>
+        <div class="grp"><span class="lab">Beginnoten</span><div class="seg" id="olevel" role="group" aria-label="Beginnoten">
+          <button type="button" data-v="easy">Witte toetsen</button><button type="button" data-v="all">Alle</button></div></div>
+      </div>
+      <h3 id="oq"></h3>
+      <p class="muted" id="ohint"></p>
+      <div class="seqrow" id="seq" aria-live="polite"></div>
+      <svg id="okbd" class="kbd" role="group" aria-label="Klavier om op te klikken"></svg>
+      <div class="fb" id="ofb" aria-live="polite"></div>
+      <div class="bar"><button type="button" class="go sec" id="reset">Opnieuw</button><button type="button" class="go sec" id="show">Toon het patroon</button></div>
+      <div class="stats" id="ostats"></div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .big { font: 800 24px / 1.2 var(--display); min-height: 1.2em; text-align: center; }
+  .steps { font: 800 17px var(--display); letter-spacing: 0.03em; white-space: nowrap; }
+  .stepsrow, .seqrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 40px; }
+  .chip { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 36px; padding: 0 10px; border: 2px solid var(--ink); border-radius: 12px; background: var(--card); font: 800 16px var(--display); }
+  .chip.step { background: var(--hover); }
+  .chip.step.h { background: var(--sun); color: #1d1b3a; }
+  .chip.step.w3 { background: var(--violet); color: var(--onviolet); }
+  .chip.ok { background: var(--good); color: #fff; }
+  .chip.todo { border-style: dashed; color: var(--muted); }
+</style>
+
+<script>
+  import { $, LETTERS, nm, bindNames, midi, pitchName, accText, playMidi, playPitch, playSequence, scalePitches, SCALE_PATTERNS, staff, keyboard, store, save, seg, rnd, makeStats, feedback, letterOf } from "../lib/music.js";
+
+  const KIND_NAME = { maj: "groot", nat: "natuurlijk klein", har: "harmonisch klein", mel: "melodisch klein" };
+  const stepLabel = (s) => (s === 1 ? "h" : s === 2 ? "H" : "1½");
+
+  // Valid tonics: every degree can be spelled with at most one accidental.
+  const TONICS = [];
+  for (const L of LETTERS) for (const alter of [-1, 0, 1]) TONICS.push({ L, alter });
+  const tonicName = (t) => t.L + accText(t.alter);
+  const tonicPitch = (t) => {
+    let p = { d: 28 + LETTERS.indexOf(t.L), alter: t.alter };
+    if (midi(p) < 60) p = { d: p.d + 7, alter: p.alter };
+    return p;
+  };
+  const valid = (t, kind) => scalePitches(tonicPitch(t), kind).every((p) => Math.abs(p.alter) <= 1) && midi(tonicPitch(t)) + 12 <= 84;
+  const tonicsFor = (kind) => TONICS.filter((t) => valid(t, kind));
+
+  // ---- explore ----
+  const kb = keyboard($("kbd"), (m) => playMidi(m, 0, 1.1));
+  let tIdx = "C0", kind = store("tb-kind", "maj", ["maj", "nat", "har", "mel"]);
+  function fillTonics() {
+    const sel = $("tonic");
+    const cur = sel.value || "C0";
+    const list = tonicsFor(kind);
+    sel.innerHTML = list.map((t) => `<option value="${t.L}${t.alter}">${nm(tonicName(t))}</option>`).join("");
+    sel.value = list.some((t) => t.L + t.alter === cur) ? cur : "C0";
+    tIdx = sel.value;
+  }
+  const parseT = (v) => ({ L: v[0], alter: Number(v.slice(1)) });
+  function explore(sound) {
+    const t = parseT($("tonic").value);
+    const ps = scalePitches(tonicPitch(t), kind);
+    const pat = SCALE_PATTERNS[kind];
+    // step chips
+    const row = $("stepsrow");
+    row.innerHTML = "";
+    for (let i = 1; i < pat.length; i++) {
+      const s = pat[i] - pat[i - 1];
+      const c = document.createElement("span");
+      c.className = "chip step" + (s === 1 ? " h" : s === 3 ? " w3" : "");
+      c.textContent = stepLabel(s);
+      c.title = `${nm(letterOf(ps[i - 1]) + accText(ps[i - 1].alter))} naar ${nm(letterOf(ps[i]) + accText(ps[i].alter))}`;
+      row.append(c);
+    }
+    // staff
+    const st = staff($("sstaff"), { clef: "treble", width: 560 });
+    ps.forEach((p, i) => st.note(p, 120 + i * 52, { stem: false }));
+    // keyboard
+    const map = {};
+    ps.forEach((p, i) => { map[midi(p)] = { cls: i === 0 || i === 7 ? "tonic" : "scale", label: nm(letterOf(p) + accText(p.alter)) }; });
+    kb.mark(map);
+    $("sname").textContent = `${nm(tonicName(t))} ${KIND_NAME[kind]}: ` + ps.map((p) => nm(letterOf(p) + accText(p.alter))).join(" – ");
+    if (sound) playSequence(ps);
+  }
+  $("tonic").onchange = () => explore(false);
+  $("kind").value = kind;
+  $("kind").onchange = () => { kind = $("kind").value; save("tb-kind", kind); fillTonics(); explore(false); };
+  $("play").onclick = () => explore(true);
+
+  // ---- exercise ----
+  let okind = store("tb-okind", "maj", ["maj", "nat", "all"]);
+  let olevel = store("tb-olevel", "easy", ["easy", "all"]);
+  const okb = keyboard($("okbd"), (m) => click(m));
+  const stats = makeStats($("ostats"), "tb-best");
+  let q = null;
+  function make() {
+    for (let n = 0; n < 200; n++) {
+      const k = okind === "all" ? ["maj", "nat", "har", "mel"][rnd(4)] : okind;
+      const list = tonicsFor(k).filter((t) => olevel === "all" || t.alter === 0);
+      const t = list[rnd(list.length)];
+      if (q && q.t.L === t.L && q.t.alter === t.alter && q.kind === k) continue;
+      const ps = scalePitches(tonicPitch(t), k);
+      return { t, kind: k, ps, i: 1, errors: 0, done: false, hinted: false };
+    }
+  }
+  const spell = (p) => nm(letterOf(p) + accText(p.alter));
+  function oRender() {
+    $("oq").textContent = `Bouw ${nm(tonicName(q.t))} ${KIND_NAME[q.kind]}`;
+    $("ohint").textContent = "Klik de noten van laag naar hoog. De beginnoot staat al aan.";
+    const seq = $("seq");
+    seq.innerHTML = "";
+    q.ps.forEach((p, i) => {
+      const c = document.createElement("span");
+      c.className = "chip " + (i < q.i ? "ok" : "todo");
+      c.textContent = i < q.i ? spell(p) : "?";
+      seq.append(c);
+    });
+    const map = {};
+    q.ps.forEach((p, i) => { if (i < q.i) map[midi(p)] = { cls: i === 0 ? "tonic" : "good", label: spell(p) }; });
+    if (q.flash) map[q.flash] = { cls: "bad", label: "" };
+    okb.mark(map);
+    if (!q.done) $("ofb").innerHTML = "";
+  }
+  function click(m) {
+    playMidi(m, 0, 1);
+    if (q.done) return;
+    const want = q.ps[q.i];
+    if (m === midi(want)) {
+      q.flash = null;
+      q.i++;
+      if (q.i === q.ps.length) {
+        q.done = true;
+        stats.record(q.errors === 0);
+        oRender();
+        playSequence(q.ps, 0.3);
+        const pat = SCALE_PATTERNS[q.kind].slice(1).map((v, i) => stepLabel(v - SCALE_PATTERNS[q.kind][i])).join(" ");
+        feedback($("ofb"), q.errors === 0, q.errors === 0 ? "Zonder fout!" : `Gelukt, met ${q.errors} ${q.errors === 1 ? "fout" : "fouten"}.`, `${nm(tonicName(q.t))} ${KIND_NAME[q.kind]}: ${q.ps.map(spell).join(" – ")}. Stappen: ${pat}.`, () => { q = make(); oRender(); });
+        return;
+      }
+    } else {
+      q.errors++;
+      q.flash = m;
+      setTimeout(() => { if (q.flash === m) { q.flash = null; oRender(); } }, 700);
+    }
+    oRender();
+  }
+  $("reset").onclick = () => { q.i = 1; q.errors = 0; q.done = false; q.flash = null; oRender(); };
+  $("show").onclick = () => {
+    const pat = SCALE_PATTERNS[q.kind].slice(1).map((v, i) => stepLabel(v - SCALE_PATTERNS[q.kind][i])).join(" ");
+    $("ohint").textContent = `Stappen: ${pat}. Elke stap H is twee toetsen, h is één toets.`;
+  };
+  seg($("okind"), okind, (v) => { okind = v; save("tb-okind", v); q = make(); oRender(); });
+  seg($("olevel"), olevel, (v) => { olevel = v; save("tb-olevel", v); q = make(); oRender(); });
+
+  bindNames($("names"), () => { fillTonics(); explore(false); oRender(); });
+  fillTonics(); explore(false); q = make(); oRender();
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => explore(false)).catch(() => {});
+</script>
