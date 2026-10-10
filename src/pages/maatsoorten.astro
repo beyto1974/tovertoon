@@ -230,23 +230,24 @@ function paint(){
   raf=requestAnimationFrame(paint);
 }
 function light(s){
-  document.querySelectorAll(".cell[data-s]").forEach(c=>c.classList.toggle("on",s!==null&&+c.dataset.s<=s&&s<+c.dataset.e));
+  document.querySelectorAll(".cell[data-s]").forEach(c=>c.classList.toggle("on",s!==null&&(!c.dataset.sig||c.dataset.sig===key)&&+c.dataset.s<=s&&s<+c.dataset.e));
 }
+function cmpLabels(){document.querySelectorAll("[data-play]").forEach(b=>{b.textContent=(playing&&key===b.dataset.play?"■ Stop ":"▶ Speel ")+b.dataset.play})}
 function start(){
   ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
   playing=true;slot=0;queue=[];nextT=ctx.currentTime+.08;
   schedule();timer=setInterval(schedule,25);raf=requestAnimationFrame(paint);
-  $("play").textContent="■ Stoppen";
+  $("play").textContent="■ Stoppen";cmpLabels();
 }
-function stop(){playing=false;clearInterval(timer);cancelAnimationFrame(raf);light(null);$("play").textContent="▶ Spelen"}
+function stop(){playing=false;clearInterval(timer);cancelAnimationFrame(raf);light(null);$("play").textContent="▶ Spelen";cmpLabels()}
 $("play").onclick=()=>playing?stop():start();
 $("bpm").oninput=e=>{bpm=+e.target.value;$("bpmv").textContent=bpm+" tellen/min"};
 function pick(k,go){stop();key=k;gi=0;try{localStorage.setItem("mt-sig",k)}catch(e){}build();setCm(model().compound?"compound":"simple");if(go)start()}
 $("sigs").innerHTML=Object.keys(SIGS).map(k=>`<button type="button" data-k="${k}">${k}</button>`).join("");
 document.querySelectorAll("#sigs button").forEach(b=>b.onclick=()=>pick(b.dataset.k));
-document.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{pick(b.dataset.play,true);window.scrollTo({top:0,behavior:"smooth"})});
-function cmp(id,sizes){const r=$(id);sizes.forEach((sz,gi)=>{for(let j=0;j<sz;j++){const c=document.createElement("div");c.className="cell"+(j===0?" a3":"");c.style.flexGrow=1;c.textContent=j===0?gi+1:"";if(j===sz-1&&gi<sizes.length-1)c.style.marginRight="12px";r.appendChild(c)}})}
-cmp("c34",[2,2,2]);cmp("c68",[3,3]);
+document.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{if(playing&&key===b.dataset.play){stop();return}pick(b.dataset.play,true)});
+function cmp(id,sizes,sig){const r=$(id);let n=0;sizes.forEach((sz,gi)=>{for(let j=0;j<sz;j++){const c=document.createElement("div");c.className="cell"+(j===0?" a3":"");c.style.flexGrow=1;c.textContent=j===0?gi+1:"";c.dataset.s=n*2;c.dataset.e=n*2+2;c.dataset.sig=sig;n++;if(j===sz-1&&gi<sizes.length-1)c.style.marginRight="12px";r.appendChild(c)}})}
+cmp("c34",[2,2,2],"3/4");cmp("c68",[3,3],"6/8");
 // ---- combinations inside one beat ----
 let cm="simple",cto=[];
 const SG={1:"zestiende",2:"achtste",3:"achtste met punt",4:"kwartnoot"}, SP={1:"zestienden",2:"achtsten",3:"achtsten met punt",4:"kwartnoten"};

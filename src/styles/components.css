@@ -42,7 +42,7 @@ select { font: 600 15px var(--body); color: var(--ink); background: var(--card);
 .opts button.right { background: var(--good); color: #fff; }
 .opts button.wrong { background: var(--bad); color: #fff; }
 .opts button:disabled:not(.right):not(.wrong) { opacity: 0.5; }
-.fb { display: flex; flex-direction: column; gap: 10px; }
+.fb { display: flex; flex-direction: column; gap: 10px; min-height: 150px; } /* reserves the feedback space so the page does not jump when it appears */
 .fb .msg { font: 800 24px var(--display); }
 .stats { display: flex; gap: 10px; flex-wrap: wrap; }
 .stat { background: var(--card); border: 2px solid var(--ink); border-radius: 16px; padding: 6px 14px; min-width: 78px; }

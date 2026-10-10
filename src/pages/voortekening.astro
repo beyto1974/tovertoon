@@ -44,11 +44,16 @@ import Base from "../layouts/Base.astro";
 
   <section>
     <h2 style="margin-bottom:12px">Alle 15 voortekeningen</h2>
+    <div class="box pick" aria-live="polite" style="margin-bottom:12px">
+      <div class="lab" id="pcnt"></div>
+      <div class="pname" id="pname"></div>
+      <div class="staffwrap"><svg id="staff2" viewBox="0 0 520 180" role="img" aria-label="Gekozen voortekening"></svg></div>
+    </div>
     <div class="tbl"><table>
       <thead><tr><th>Voortekening</th><th>Voortekens in volgorde</th><th>Groot</th><th>Klein</th></tr></thead>
       <tbody id="tb"></tbody>
     </table></div>
-    <p class="muted" style="margin-top:10px">Klik op een rij om ze op de notenbalk te zien. Zeven kruisen en zeven mollen worden zelden gebruikt: Cis groot en Des groot klinken hetzelfde, en de versie met mollen leest makkelijker.</p>
+    <p class="muted" style="margin-top:10px">Klik op een rij om ze hierboven op de notenbalk te zien. Zeven kruisen en zeven mollen worden zelden gebruikt: Cis groot en Des groot klinken hetzelfde, en de versie met mollen leest makkelijker.</p>
   </section>
 </main>
 </Base>
@@ -102,6 +107,8 @@ tr:last-child td{border-bottom:0}
 .seg button:hover{background:var(--sun);color:#1D1B3A}
 .seg button[aria-pressed="true"]:hover{background:var(--ink);color:var(--paper)}
 header{display:flex;flex-direction:column;gap:6px}
+.pick .pname{font:800 clamp(24px,5vw,32px)/1.1 var(--display)}
+#staff2{max-width:420px;margin:0 auto}
 </style>
 <script is:inline>
 const L=["C","D","E","F","G","A","B"], SOL=["Do","Re","Mi","Fa","Sol","La","Si"];
@@ -132,8 +139,8 @@ function accGlyph(s,flat,cx,cy){
   }
   s.append(g);
 }
-function draw(v){
-  const s=$("staff");s.innerHTML="";
+function draw(v,id="staff"){
+  const s=$(id);s.innerHTML="";
   for(let i=0;i<5;i++){s.append(el("line",{class:"line",x1:16,x2:504,y1:bottom-i*gap,y2:bottom-i*gap}))}
   s.append(el("line",{class:"line",x1:16,x2:16,y1:bottom-4*gap,y2:bottom}));
   s.append(el("text",{x:22,y:bottom-gap*1+CLEF_DY,style:"font:400 "+CLEF_SIZE+"px 'Noto Music','Segoe UI Symbol','DejaVu Sans',serif;fill:var(--ink)"},"\u{1D11E}"));
@@ -150,7 +157,9 @@ function setV(v){
   $("cnt").textContent=sig(v);
   $("maj").textContent=nm(k.maj)+" groot";
   $("minor").textContent=nm(k.min)+" klein";
-  draw(v);
+  draw(v);draw(v,"staff2");
+  $("pcnt").textContent=sig(v);
+  $("pname").textContent=nm(k.maj)+" groot · "+nm(k.min)+" klein";
   document.querySelectorAll("#tb tr").forEach(r=>r.classList.toggle("on",+r.dataset.v===v));
 }
 $("sl").oninput=e=>setV(e.target.value);
@@ -162,7 +171,7 @@ function build(){
   $("oflat").innerHTML=FL.map((n,i)=>`<span style="color:var(--flat)">${nm(n)}♭<small>${i+1}</small></span>`).join("");
   $("tb").innerHTML=[...Array(15)].map((_,i)=>{const v=i-7,k=key(v);
     return `<tr data-v="${v}"><td>${sig(v)}</td><td class="a">${acc(v).map(a=>nm(a[0])+a.slice(1)).join(" ")||"–"}</td><td><b>${nm(k.maj)}</b> groot</td><td><b>${nm(k.min)}</b> klein</td></tr>`}).join("");
-  document.querySelectorAll("#tb tr").forEach(r=>r.onclick=()=>{setV(r.dataset.v);window.scrollTo({top:0,behavior:"smooth"})});
+  document.querySelectorAll("#tb tr").forEach(r=>r.onclick=()=>setV(r.dataset.v));
   document.querySelectorAll(".nm").forEach(e=>{const n=e.dataset.n;e.textContent=nm(n[0])+n.slice(1)});
   setV(cur);
 }
