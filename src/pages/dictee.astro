@@ -9,6 +9,8 @@ import "../styles/components.css";
     <p class="muted">Luister naar een korte melodie en schrijf haar op. Klik op de balk om een noot te zetten, of gebruik de pijltjes. Met "Zelf schrijven" schrijf je ook het ritme, met rusten en bindbogen.</p>
   </header>
 
+  <details class="cfgbox" id="cfg" open>
+  <summary class="cfg">Instellingen</summary>
   <section class="box bar" aria-label="Instellingen">
     <div class="grp"><span class="lab">Niveau</span>
       <div class="seg" id="level" role="group" aria-label="Niveau">
@@ -23,6 +25,7 @@ import "../styles/components.css";
         <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
       </div></div>
   </section>
+  </details>
 
   <section class="box" aria-live="polite">
     <h2 id="qt">Schrijf de melodie op</h2>
@@ -79,11 +82,39 @@ import "../styles/components.css";
   .bad .ink { fill: var(--bad); }
   .bad .stem { stroke: var(--bad); }
   .dim .head { fill: var(--muted); }
+  .dim .head.hollow { fill: var(--card); stroke: var(--muted); }
   .slot { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; }
   .slot.on { stroke: var(--violet); stroke-dasharray: none; stroke-width: 3; }
   .col { fill: var(--violet); opacity: 0.12; }
   .pals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .pals .pill:disabled { opacity: 0.4; cursor: default; }
+  summary.cfg { display: none; }
+  /* Phone: the nav list and the intro give way, the settings fold away, so the staff is near the top. */
+  @media (max-width: 600px) {
+    body { padding-block: 6px; }
+    .site-nav { margin-bottom: 6px; }
+    .site-nav ul, .site-foot { display: none; }
+    main { gap: 8px; }
+    header p { display: none; }
+    h1 { font-size: 22px; margin: 0; }
+    details.cfgbox > summary.cfg { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font: 600 14px var(--body); list-style: none; padding: 8px 14px; background: var(--card); border: 2px solid var(--ink); border-radius: 14px; }
+    summary.cfg::-webkit-details-marker { display: none; }
+    summary.cfg::after { content: "▾"; }
+    details[open] > summary.cfg::after { content: "▴"; }
+    details.cfgbox[open] > summary.cfg { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    details.cfgbox > .bar { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; gap: 8px 14px; }
+    .box { border-radius: 16px; padding: 12px; gap: 8px; }
+    h2 { font-size: 18px; margin: 0; }
+    .go { font-size: 16px; padding: 7px 18px; }
+    .pill { padding: 8px 12px; font-size: 14px; }
+    .fb { gap: 6px; min-height: 0; }
+    .fb .msg { font-size: 18px; }
+    .fb p { font-size: 13px; line-height: 1.3; }
+    .stats { flex-wrap: nowrap; gap: 8px; }
+    .stat { flex: 1; min-width: 0; padding: 2px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+    .stat small { display: inline; font-size: 10px; }
+    .stat b { font-size: 16px; }
+  }
   #pal[hidden], #ansbox[hidden] { display: none; }
   #ansbox { display: flex; flex-direction: column; gap: 6px; }
 </style>
@@ -107,7 +138,7 @@ import "../styles/components.css";
   const pit = (d, ks) => ({ d, alter: alterOf(letterAt(d), ks) });
   const noteName = (p) => nm(letterAt(p.d) + (p.alter > 0 ? "♯" : p.alter < 0 ? "♭" : ""));
   const full = (p) => `${noteName(p)}${octaveAt(p.d)}`;
-  const D_MIN = pitch("A", 3).d, D_MAX = pitch("D", 6).d;
+  const D_MIN = pitch("E", 3).d, D_MAX = pitch("D", 6).d; // the B♭ key reaches down to G3, so the lowest clickable note must be below that
   const W = 460;
 
   // One bar of 4/4 in sixteenths: 4 = quarter, 2 = eighth, 8 = half, 6 = dotted quarter. Two eighths on one beat share a beam.
@@ -470,5 +501,6 @@ import "../styles/components.css";
     render();
     if (q.done) showResult();
   });
+  try { if (matchMedia("(max-width:600px)").matches) $("cfg").open = false; } catch (e) {}
   next();
 </script>

@@ -68,3 +68,8 @@ ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column;
 .kbd .kl { font: 800 13px var(--display); fill: var(--ink); pointer-events: none; }
 .kbd .kl.onblack { fill: #fff; }
 .kbd .scale ~ .kl { }
+/* Phone: staves may shrink instead of scrolling sideways, and a row of three choices fits in one line. */
+@media (max-width: 600px) {
+  .staffwrap svg { min-width: 0; }
+  .seg button { padding: 0 10px; font-size: 14px; height: 38px; }
+}
