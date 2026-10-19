@@ -73,7 +73,8 @@ import "../styles/components.css";
 </style>
 
 <script>
-  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, playPitch, staff, CLEFS, GAP, STAFF_BOTTOM, yOf, el, store, save, seg, rnd, makeStats, feedback, markOptions } from "../lib/music.js";
+  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, playPitch, stopSound, staff, CLEFS, GAP, STAFF_BOTTOM, yOf, el, store, save, seg, rnd, makeStats, feedback, markOptions } from "../lib/music.js";
+  const hear = (p) => { stopSound(); playPitch(p); }; // a new note cuts the one still ringing
 
   let vclef = store("nb-vclef", "treble", ["treble", "bass"]);
   let vsel = null;
@@ -99,7 +100,7 @@ import "../styles/components.css";
   function select(d) {
     vsel = d;
     drawVerken();
-    playPitch({ d, alter: 0 });
+    hear({ d, alter: 0 });
   }
   seg($("vclef"), vclef, (v) => { vclef = v; save("nb-vclef", v); vsel = null; drawVerken(); });
   // Keyboard and touch alternative to clicking the thin lines: step one position up or down.
@@ -113,7 +114,7 @@ import "../styles/components.css";
   $("vstaff").addEventListener("keydown", (e) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepNote(e.key === "ArrowUp" ? 1 : -1); }
   });
-  $("middle").onclick = () => { vsel = pitch("C", 4).d; drawVerken(); playPitch({ d: vsel, alter: 0 }); };
+  $("middle").onclick = () => { vsel = pitch("C", 4).d; drawVerken(); hear({ d: vsel, alter: 0 }); };
 
   // ---- tables ----
   function tables() {
@@ -178,10 +179,10 @@ import "../styles/components.css";
     q.done = true;
     q.picked = i;
     stats.record(i === ((q.d % 7) + 7) % 7);
-    if ($("osound").checked) playPitch({ d: q.d, alter: 0 });
+    if ($("osound").checked) hear({ d: q.d, alter: 0 });
     result();
   }
-  function next() { q = make(); render(); if ($("osound").checked) playPitch({ d: q.d, alter: 0 }); }
+  function next() { q = make(); render(); if ($("osound").checked) hear({ d: q.d, alter: 0 }); }
   seg($("oclef"), oclef, (v) => { oclef = v; save("nb-oclef", v); q = null; next(); });
   seg($("orange"), orange, (v) => { orange = v; save("nb-orange", v); q = null; next(); });
 

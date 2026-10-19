@@ -1,5 +1,5 @@
 // Rhythm helpers: notation on a single line, bar generation and playback. Time is counted in sixteenths.
-import { el, rnd, shuffle, audio } from "./music.js";
+import { el, rnd, shuffle, audio, playMidi, stopSound } from "./music.js";
 
 export const BAR = 16;
 const LINE = 104;
@@ -156,28 +156,21 @@ export function distractors(events, level, n = 3) {
 }
 
 // ---- playback ----
-function blip(c, t, f, v, d) {
-  const o = c.createOscillator(), g = c.createGain();
-  o.type = "triangle";
-  o.frequency.value = f;
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(v, t + 0.006);
-  g.gain.exponentialRampToValueAtTime(v * 0.7, t + Math.max(0.02, d - 0.05)); // hold: the note lasts as long as it is written
-  g.gain.exponentialRampToValueAtTime(0.001, t + d);
-  o.connect(g);
-  g.connect(c.destination);
-  o.start(t);
-  o.stop(t + d + 0.05);
-}
+// The rhythm is played with the same soft piano tone as the scales: one pitch (G4) for the notes,
+// a quiet low C for the pulse and short high ticks for the count-in.
+const NOTE = 67, PULSE = 48, TICK = 91, TICK_FIRST = 96;
 /** Plays one bar (optionally after a count-in bar). Returns the duration in seconds. */
 export function playBar(events, bpm, countIn) {
-  const c = audio();
-  if (!c) return 0;
+  if (!audio()) return 0;
+  stopSound(); // a new bar cuts the previous one instead of playing over it
   const beat = 60 / bpm, u = beat / 4;
-  const t0 = c.currentTime + 0.08 + (countIn ? 4 * beat : 0);
-  if (countIn) for (let i = 0; i < 4; i++) blip(c, c.currentTime + 0.08 + i * beat, i === 0 ? 1500 : 1100, 0.18, 0.05);
-  for (let i = 0; i < 4; i++) blip(c, t0 + i * beat, 900, 0.05, 0.04); // soft pulse under the rhythm
-  events.forEach((e) => { if (!e.rest) blip(c, t0 + e.on * u, 560, 0.4, Math.max(0.06, e.dur * u * 0.92)); });
+  const t0 = 0.06 + (countIn ? 4 * beat : 0);
+  if (countIn) for (let i = 0; i < 4; i++) playMidi(i === 0 ? TICK_FIRST : TICK, 0.06 + i * beat, 0.15, 0.12);
+  for (let i = 0; i < 4; i++) playMidi(PULSE, t0 + i * beat, 0.3, 0.14);
+  events.forEach((e) => {
+    // A piano tone fades by itself, so longer notes ring a little longer without being held at full volume.
+    if (!e.rest) playMidi(NOTE, t0 + e.on * u, Math.min(1.5, Math.max(0.3, e.dur * u * 1.4)), 0.45);
+  });
   return (countIn ? 8 : 4) * beat;
 }
 

@@ -74,7 +74,7 @@ import "../styles/components.css";
 </style>
 
 <script>
-  import { $, LETTERS, nm, bindNames, midi, pitchName, accText, playMidi, playPitch, playSequence, scalePitches, SCALE_PATTERNS, staff, keyboard, store, save, seg, rnd, makeStats, feedback, letterOf } from "../lib/music.js";
+  import { $, LETTERS, nm, bindNames, midi, pitchName, accText, playMidi, stopSound, playPitch, playSequence, scalePitches, SCALE_PATTERNS, staff, keyboard, store, save, seg, rnd, makeStats, feedback, letterOf } from "../lib/music.js";
 
   const KIND_NAME = { maj: "groot", nat: "natuurlijk klein", har: "harmonisch klein", mel: "melodisch klein" };
   const stepLabel = (s) => (s === 1 ? "h" : s === 2 ? "H" : "1½");
@@ -92,7 +92,7 @@ import "../styles/components.css";
   const tonicsFor = (kind) => TONICS.filter((t) => valid(t, kind));
 
   // ---- explore ----
-  const kb = keyboard($("kbd"), (m) => playMidi(m, 0, 1.1));
+  const kb = keyboard($("kbd"), (m) => { stopSound(); playMidi(m, 0, 1.1); });
   let tIdx = "C0", kind = store("tb-kind", "maj", ["maj", "nat", "har", "mel"]);
   function fillTonics() {
     const sel = $("tonic");
@@ -169,6 +169,7 @@ import "../styles/components.css";
     if (!q.done) $("ofb").innerHTML = "";
   }
   function click(m) {
+    stopSound();
     playMidi(m, 0, 1);
     if (q.done) return;
     const want = q.ps[q.i];

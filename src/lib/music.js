@@ -58,13 +58,34 @@ export const pitchName = (p) => nm(letterOf(p) + accText(p.alter));
 export const freq = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
 // ---- sound ----
-let ctx = null;
+let ctx = null, master = null;
 export function audio() {
   try {
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Everything goes through a gentle limiter: two notes at once (an interval, a chord) would otherwise clip.
+      const lim = ctx.createDynamicsCompressor();
+      lim.threshold.value = -14;
+      lim.knee.value = 12;
+      lim.ratio.value = 6;
+      lim.attack.value = 0.003;
+      lim.release.value = 0.2;
+      master = ctx.createGain();
+      master.gain.value = 0.85;
+      master.connect(lim);
+      lim.connect(ctx.destination);
+    }
     if (ctx.state === "suspended") ctx.resume();
   } catch (e) {}
   return ctx;
+}
+const sounding = new Set();
+/** Cuts every tone that is playing or still scheduled, so two sounds never overlap. */
+export function stopSound() {
+  sounding.forEach(({ o, out }) => {
+    try { o.stop(); o.disconnect(); out.disconnect(); } catch (e) {}
+  });
+  sounding.clear();
 }
 /** Plays a soft piano-like tone. `when` is seconds from now. */
 export function playMidi(m, when = 0, dur = 1.2, vol = 0.5) {
@@ -75,7 +96,7 @@ export function playMidi(m, when = 0, dur = 1.2, vol = 0.5) {
   out.gain.setValueAtTime(0, t);
   out.gain.linearRampToValueAtTime(vol, t + 0.01);
   out.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  out.connect(c.destination);
+  out.connect(master);
   [[1, 1], [2, 0.4], [3, 0.18], [4, 0.08]].forEach(([h, a], i) => {
     const o = c.createOscillator();
     const g = c.createGain();
@@ -87,6 +108,9 @@ export function playMidi(m, when = 0, dur = 1.2, vol = 0.5) {
     g.connect(out);
     o.start(t);
     o.stop(t + dur + 0.1);
+    const rec = { o, out };
+    sounding.add(rec);
+    o.onended = () => sounding.delete(rec);
   });
 }
 export const playPitch = (p, when, dur, vol) => playMidi(midi(p), when, dur, vol);
@@ -255,6 +279,7 @@ export function scalePitches(tonic, kind) {
   });
 }
 export function playSequence(ps, step = 0.42) {
+  stopSound();
   ps.forEach((p, i) => playPitch(p, i * step, 0.9, 0.45));
 }
 

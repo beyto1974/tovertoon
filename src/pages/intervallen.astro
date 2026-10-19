@@ -27,7 +27,7 @@ import "../styles/components.css";
     <section class="box" aria-labelledby="h-regel">
       <h2 id="h-regel">Twee stappen: grootte en soort</h2>
       <ol class="plain">
-        <li><b>Grootte:</b> tel de lettern inclusief beide noten. Do naar Sol is Do-Re-Mi-Fa-Sol: vijf letters, dus een kwint.</li>
+        <li><b>Grootte:</b> tel de letters inclusief beide noten. Do naar Sol is Do-Re-Mi-Fa-Sol: vijf letters, dus een kwint.</li>
         <li><b>Soort:</b> tel de halve tonen. Een kwint met 7 halve tonen is <b>rein</b>. Eén halve toon minder is <b>verminderd</b>, één meer is <b>overmatig</b>.</li>
         <li>Secunde, terts, sext en septiem zijn <b>groot</b> of <b>klein</b>. Prime, kwart, kwint en octaaf zijn <b>rein</b>.</li>
       </ol>
@@ -75,7 +75,7 @@ import "../styles/components.css";
 </style>
 
 <script>
-  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, accText, playPitch, staff, store, save, seg, rnd, shuffle, makeStats, feedback, markOptions, pitchName } from "../lib/music.js";
+  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, accText, playPitch, stopSound, staff, store, save, seg, rnd, shuffle, makeStats, feedback, markOptions, pitchName } from "../lib/music.js";
 
   // Interval catalogue: size = number of letters spanned, semis = half tones.
   const IV = [
@@ -139,6 +139,7 @@ import "../styles/components.css";
     const up = upper(C4, iv);
     if (!up) return;
     pair($("tstaff"), C4, up);
+    stopSound();
     playPitch(C4, 0, 1.1);
     playPitch(up, 0.7, 1.4);
   }
@@ -169,6 +170,7 @@ import "../styles/components.css";
     pair($("pstaff"), low, up);
     $("pname").textContent = `${pitchName(low)} – ${pitchName(up)}: ${iv.name}`;
     if (playSound) {
+      stopSound();
       if (pmode === "har") { playPitch(low, 0, 1.6); playPitch(up, 0, 1.6); }
       else { playPitch(low, 0, 1.1); playPitch(up, 0.7, 1.4); }
     }
@@ -228,7 +230,7 @@ import "../styles/components.css";
     $("ofb").innerHTML = "";
     if (q.done) result();
   }
-  function hear() { playPitch(q.low, 0, 1.1); playPitch(q.up, 0.7, 1.4); }
+  function hear() { stopSound(); playPitch(q.low, 0, 1.1); playPitch(q.up, 0.7, 1.4); }
   function explain() {
     const iv = q.iv;
     const letters = iv.size;

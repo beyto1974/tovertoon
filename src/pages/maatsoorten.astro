@@ -34,7 +34,7 @@ import Base from "../layouts/Base.astro";
 
   <section class="box">
     <h2>Combinaties binnen één tel</h2>
-    <p class="muted">Elke kaart vult precies één tel op een andere manier. Kies hoe lang een tel is en druk op spelen om het ritme te horen. Het tempo komt van de schuif bij de metronome.</p>
+    <p class="muted">Elke kaart vult precies één tel op een andere manier. Kies hoe lang een tel is en druk op spelen om het ritme te horen. Het tempo komt van de schuif bij de metronoom.</p>
     <div class="chips" style="margin-top:12px" id="cmode" role="group" aria-label="Lengte van een tel">
       <button type="button" data-m="simple" aria-pressed="true">Tel = kwartnoot (4/4, 3/4)</button>
       <button type="button" data-m="compound" aria-pressed="false">Tel = kwartnoot met punt (6/8, 9/8)</button>
@@ -123,7 +123,8 @@ ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .head{transition:fill .05s}.head.on{fill:var(--violet)}
 .combo .dashline{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:3 4}
 </style>
-<script is:inline>
+<script>
+import { audio, playMidi, stopSound } from "../lib/music.js";
 const $=id=>document.getElementById(id);
 // Time is counted in sixteenths. groups = group sizes in pulses; fine = subdivision cell length.
 const SIGS={
@@ -197,13 +198,10 @@ function splits(){
 }
 // ---- audio + playback ----
 let ctx=null,timer=null,nextT=0,slot=0,queue=[],raf=0;
-function click(t,level){
-  const o=ctx.createOscillator(),g=ctx.createGain(),f=[520,760,980,1300][level];
-  o.frequency.value=f;o.type="square";
-  const v=[.05,.12,.18,.28][level];
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.07);
-  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.08);
-}
+// Metronome ticks are short piano notes: the higher and louder, the stronger the beat (subdivision, weak, medium, strong).
+const TICKS=[[72,.08,.12],[76,.16,.14],[79,.24,.16],[84,.32,.2]];
+const fromNow=t=>Math.max(0,t-ctx.currentTime-.02);
+function click(t,level){const [m,v,d]=TICKS[level];playMidi(m,fromNow(t),d,v)}
 function levelAt(s){ // 3 strong,2 medium,1 weak count,0 subdivision, -1 silent
   const {S,acc}=model();let pos=0;
   for(let i=0;i<S.pulse.length;i++){
@@ -234,12 +232,12 @@ function light(s){
 }
 function cmpLabels(){document.querySelectorAll("[data-play]").forEach(b=>{b.textContent=(playing&&key===b.dataset.play?"■ Stop ":"▶ Speel ")+b.dataset.play})}
 function start(){
-  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
+  ctx=audio();
   playing=true;slot=0;queue=[];nextT=ctx.currentTime+.08;
   schedule();timer=setInterval(schedule,25);raf=requestAnimationFrame(paint);
   $("play").textContent="■ Stoppen";cmpLabels();
 }
-function stop(){playing=false;clearInterval(timer);cancelAnimationFrame(raf);light(null);$("play").textContent="▶ Spelen";cmpLabels()}
+function stop(){playing=false;stopSound();clearInterval(timer);cancelAnimationFrame(raf);light(null);$("play").textContent="▶ Spelen";cmpLabels()}
 $("play").onclick=()=>playing?stop():start();
 $("bpm").oninput=e=>{bpm=+e.target.value;$("bpmv").textContent=bpm+" tellen/min"};
 function pick(k,go){stop();key=k;gi=0;try{localStorage.setItem("mt-sig",k)}catch(e){}build();setCm(model().compound?"compound":"simple");if(go)start()}
@@ -308,16 +306,14 @@ function buildCombos(){
 }
 function playCombo(list,heads){
   stop();cto.forEach(clearTimeout);cto=[];document.querySelectorAll(".head.on").forEach(h=>h.classList.remove("on"));
-  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
+  ctx=audio();
   const L=cm==="simple"?4:3, beat=60/bpm, u=beat/L, t0=ctx.currentTime+.06;
   for(let rep=0;rep<2;rep++){
     click(t0+rep*beat,rep===0?3:1);
     let on=0;
     list.forEach((d,i)=>{
       const t=t0+rep*beat+on*u;on+=d;
-      const o=ctx.createOscillator(),g=ctx.createGain();o.type="triangle";o.frequency.value=660;
-      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.008);g.gain.exponentialRampToValueAtTime(.001,t+Math.min(.35,d*u));
-      o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.4);
+      playMidi(67,fromNow(t),Math.min(.6,Math.max(.25,d*u*1.4)),.4);
       cto.push(setTimeout(()=>{heads.forEach(h=>h.classList.remove("on"));heads[i].classList.add("on")},(t-ctx.currentTime)*1000));
     });
   }
