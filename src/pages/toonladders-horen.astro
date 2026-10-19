@@ -1,0 +1,322 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Toonladders horen" description="Luister naar een toonladder en kies het type: groot, klein natuurlijk, harmonisch of melodisch. Met uitleg bij elk antwoord." wrap="720px">
+<main>
+  <header>
+    <h1>Toonladders horen</h1>
+    <p class="muted">Luister naar een toonladder en kies welk type het is: groot, klein natuurlijk, harmonisch of melodisch. Elk antwoord krijgt uitleg over de opbouw.</p>
+  </header>
+
+  <details class="cfgbox" id="cfg" open>
+    <summary class="cfg">Instellingen</summary>
+    <section class="box bar" aria-label="Instellingen">
+      <div class="grp"><span class="lab">Soorten</span>
+        <div class="seg" id="pool" role="group" aria-label="Welke soorten toonladders">
+          <button type="button" data-v="two">Groot / klein</button><button type="button" data-v="four">Vier</button><button type="button" data-v="all">Alles</button>
+        </div></div>
+      <div class="grp"><span class="lab">Richting</span>
+        <div class="seg" id="dir" role="group" aria-label="Richting">
+          <button type="button" data-v="up">Omhoog</button><button type="button" data-v="both">Op en neer</button>
+        </div></div>
+      <div class="grp"><span class="lab">Zwakke plekken</span>
+        <div class="seg" id="focus" role="group" aria-label="Vaker herhalen wat fout ging">
+          <button type="button" data-v="on">Vaker</button><button type="button" data-v="off">Uit</button><button type="button" data-v="reset">Wis</button>
+        </div></div>
+      <div class="grp"><span class="lab">Noten</span>
+        <div class="seg" id="names" role="group" aria-label="Notennamen">
+          <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+        </div></div>
+    </section>
+  </details>
+
+  <section class="box q" aria-live="polite">
+    <h2 id="qt">Welk type toonladder hoor je?</h2>
+    <button type="button" class="go play" id="play">▶ Speel de toonladder</button>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <div class="reveal" id="reveal" hidden>
+      <div class="stepsrow" id="stepsrow" aria-label="Stappen"></div>
+      <p class="muted legend">H = hele toon, h = halve toon, 1½ = anderhalve toon</p>
+      <svg id="kbd" class="kbd" role="group" aria-label="Klavier met de toonladder"></svg>
+      <p class="muted" id="kbnote"></p>
+      <div class="cmp" id="cmp"></div>
+    </div>
+  </section>
+
+  <section class="stats" id="stats" aria-label="Score"></section>
+</main>
+</Base>
+
+<style is:global>
+/* .box stacks its children in a column; the settings box wants them side by side. */
+.box.bar{flex-direction:row}
+.play{align-self:stretch;font-size:22px;height:64px;border-radius:16px}
+.play:disabled{cursor:default;opacity:.75}
+.dots{display:flex;gap:8px;justify-content:center;min-height:14px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);background:transparent;transition:background .1s}
+.dots i.on{background:var(--sun)}
+.opts button{line-height:1.1}
+.reveal{display:flex;flex-direction:column;gap:8px}
+.stepsrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:34px;padding:0 8px;border:2px solid var(--ink);border-radius:12px;background:var(--hover);font:800 16px var(--display)}
+.chip.h{background:var(--sun);color:#1d1b3a}
+.chip.w3{background:var(--violet);color:var(--onviolet)}
+.legend{font-size:13px}
+.cmp{display:flex;gap:8px;flex-wrap:wrap}
+.fb .go{align-self:flex-start}
+.kbd .bad{fill:var(--bad)}
+summary.cfg{display:none}
+/* Phone: question, scale, answers and feedback fit one screen. */
+@media (max-width:600px){
+  body{padding-block:6px;min-height:100dvh;box-sizing:border-box}
+  .site-nav{margin-bottom:6px}
+  .site-nav ul,.site-foot{display:none}
+  main{gap:8px}
+  header p{display:none}
+  h1{font-size:22px;margin:0}
+  details.cfgbox>summary.cfg{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font:600 14px var(--body);list-style:none;padding:8px 14px;background:var(--card);border:2px solid var(--ink);border-radius:14px}
+  summary.cfg::-webkit-details-marker{display:none}
+  summary.cfg::after{content:"▾"}
+  details[open]>summary.cfg::after{content:"▴"}
+  details.cfgbox[open]>summary.cfg{border-bottom-left-radius:0;border-bottom-right-radius:0}
+  .box{border-radius:16px;padding:12px;gap:6px}
+  details.cfgbox>.bar{border-top:0;border-top-left-radius:0;border-top-right-radius:0;gap:8px 14px}
+  .seg button{height:34px;padding:0 12px;font-size:14px}
+  .q h2{font-size:18px;margin:0}
+  .play{height:48px;font-size:18px}
+  .dots i{width:10px;height:10px}
+  .dots{gap:6px}
+  .opts{gap:8px}
+  .opts button{min-height:44px;font-size:16px;border-radius:14px}
+  .fb{gap:6px;min-height:0}
+  .fb .msg{font-size:18px}
+  .fb p{font-size:13px;line-height:1.3}
+  .chip{min-width:30px;height:28px;font-size:14px;border-radius:10px}
+  .legend{font-size:12px}
+  .go{font-size:16px;padding:7px 20px}
+  .stats{flex-wrap:nowrap;gap:8px}
+  .stat{flex:1;min-width:0;padding:2px 10px;border-radius:12px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .stat small{display:inline;font-size:10px}
+  .stat b{font-size:16px}
+}
+</style>
+
+<script>
+  import { $, LETTERS, SEMI, nm, bindNames, midi, pitch, playMidi, stopSound, keyboard, store, save, seg, rnd, makeStats, feedback, markOptions } from "../lib/music.js";
+
+  // up/down: semitones above the tonic; deg: letter steps above the tonic's letter (null = no note names).
+  const TYPES = {
+    maj: { name: "groot", up: [0, 2, 4, 5, 7, 9, 11, 12], deg: [0, 1, 2, 3, 4, 5, 6, 7],
+      why: "De terts is groot: twee hele tonen boven de grondtoon. De halve tonen liggen tussen de 3e en 4e trap en tussen de 7e en 8e trap. Dat geeft het open, vrolijke geluid." },
+    nat: { name: "klein natuurlijk", up: [0, 2, 3, 5, 7, 8, 10, 12], deg: [0, 1, 2, 3, 4, 5, 6, 7],
+      why: "De terts is klein: een hele en een halve toon boven de grondtoon. De halve tonen liggen tussen de 2e en 3e en tussen de 5e en 6e trap. De 7e trap ligt een hele toon onder de grondtoon, dus je hoort geen leidtoon." },
+    har: { name: "klein harmonisch", up: [0, 2, 3, 5, 7, 8, 11, 12], deg: [0, 1, 2, 3, 4, 5, 6, 7],
+      why: "Klein natuurlijk, maar met een verhoogde 7e trap: de leidtoon. Daardoor zit er tussen de 6e en 7e trap een stap van anderhalve toon. Dat sprongetje klinkt typisch oosters." },
+    mel: { name: "klein melodisch", up: [0, 2, 3, 5, 7, 9, 11, 12], down: [12, 10, 8, 7, 5, 3, 2, 0], deg: [0, 1, 2, 3, 4, 5, 6, 7],
+      why: "Omhoog zijn de 6e en 7e trap verhoogd, dus alleen de terts is klein en de rest klinkt als groot. Omlaag speel je gewoon klein natuurlijk." },
+    chr: { name: "chromatisch", up: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], deg: null,
+      why: "Elke stap is een halve toon, twaalf stappen per octaaf. Je hoort geen thuistoon." },
+    hel: { name: "heletoons", up: [0, 2, 4, 6, 8, 10, 12], deg: [0, 1, 2, 3, 4, 5, 7],
+      why: "Alleen hele tonen, zes stappen per octaaf. Er is geen leidtoon en geen halve toon, daardoor klinkt het zwevend." },
+    pen: { name: "pentatonisch", up: [0, 2, 4, 7, 9, 12], deg: [0, 1, 2, 4, 5, 7],
+      why: "Vijf tonen per octaaf: groot zonder de 4e en 7e trap. Er zit geen halve toon in, dus het klinkt open en zonder spanning." },
+  };
+  const POOLS = { two: ["maj", "nat"], four: ["maj", "nat", "har", "mel"], all: ["maj", "nat", "har", "mel", "chr", "hel", "pen"] };
+  // Tonics as [letter index, accidental]; the spelling is checked per scale so no double sharps or flats appear.
+  const ROOTS = [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]];
+  const STEP = { 1: "h", 2: "H", 3: "1½" };
+
+  let pool = store("th-pool", "four", Object.keys(POOLS));
+  let dir = store("th-dir", "up", ["up", "both"]);
+  let again = store("th-focus", "on", ["on", "off"]) === "on";
+  let weak = {};
+  try { const w = JSON.parse(localStorage.getItem("th-weak") || "{}"); if (w && typeof w === "object") weak = w; } catch (e) {}
+  let q = null, armed = false, busy = false, timers = [], last = "";
+  const reveal = $("reveal");
+  const kb = keyboard($("kbd"), (m) => { stopAll(); idle(); playMidi(m, 0, 1.1); });
+  const stats = makeStats($("stats"), "th-best");
+
+  const label = (id) => (id === "nat" && pool === "two" ? "klein" : TYPES[id].name);
+  const cap = (s) => s[0].toUpperCase() + s.slice(1);
+  const accOf = (a) => (a > 0 ? "♯" : a < 0 ? "♭" : "");
+
+  // ---- sound: one scale at a time ----
+  function stopAll() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    stopSound();
+    busy = false;
+  }
+  function sequence(id) {
+    const t = TYPES[id];
+    const down = t.down || t.up.slice().reverse();
+    return dir === "both" ? t.up.concat(down.slice(1)) : t.up;
+  }
+  const players = () => [$("play"), ...$("cmp").querySelectorAll("button")];
+  const idle = () => {
+    busy = false;
+    players().forEach((b) => { b.disabled = false; });
+    $("play").textContent = "▶ Nog eens horen";
+  };
+  // Plays one scale type from the question's tonic; the dots follow the notes.
+  function play(id = q.type) {
+    if (busy || !q) return;
+    stopAll();
+    armed = true;
+    busy = true;
+    players().forEach((b) => { b.disabled = true; });
+    $("play").textContent = "♪ …";
+    const s = sequence(id), step = 0.45;
+    const d = $("dots");
+    d.innerHTML = "";
+    s.forEach(() => d.append(document.createElement("i")));
+    const dots = [...d.children];
+    s.forEach((off, i) => {
+      playMidi(q.root + off, i * step, i === s.length - 1 ? 1.6 : 0.9, 0.45);
+      timers.push(setTimeout(() => dots[i] && dots[i].classList.add("on"), 100 + i * step * 1000));
+    });
+    timers.push(setTimeout(idle, (s.length - 1) * step * 1000 + 900));
+  }
+
+  // ---- questions ----
+  // Spell the scale from the tonic's letter; null when it would need a double sharp or flat.
+  function spell(t, [li, a]) {
+    if (!t.deg) return [];
+    const out = [];
+    for (let i = 0; i < t.up.length; i++) {
+      const ds = t.deg[i], letter = (li + ds) % 7;
+      const natural = SEMI[letter] + 12 * Math.floor((li + ds) / 7);
+      const acc = SEMI[li] + a + t.up[i] - natural;
+      if (Math.abs(acc) > 1) return null;
+      out.push(LETTERS[letter] + accOf(acc));
+    }
+    return out;
+  }
+  // Types you missed come up more often: weight 1 + 3 per open miss; a right answer pays one miss back.
+  function pickType(ids) {
+    if (!again) return ids[rnd(ids.length)];
+    const ws = ids.map((id) => 1 + 3 * (weak[id] || 0));
+    let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < ids.length; i++) { r -= ws[i]; if (r < 0) return ids[i]; }
+    return ids[ids.length - 1];
+  }
+  function track(id, ok) {
+    const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
+    if (n) weak[id] = n; else delete weak[id];
+    save("th-weak", JSON.stringify(weak));
+  }
+  function make() {
+    const ids = POOLS[pool];
+    let c = null, tries = 0;
+    while ((!c || c.id === last) && tries < 80) {
+      tries++;
+      const type = pickType(ids), r = ROOTS[rnd(ROOTS.length)];
+      const notes = spell(TYPES[type], r);
+      if (notes === null) continue;
+      // Tonic in the octave from C4, so the whole scale fits the keyboard (C4 to C6).
+      const m = midi(pitch(LETTERS[r[0]], 4, r[1]));
+      c = { type, root: m, tonic: LETTERS[r[0]] + accOf(r[1]), notes, id: type + r };
+    }
+    last = c.id;
+    return c;
+  }
+
+  function render() {
+    stopAll();
+    const o = $("opts");
+    o.innerHTML = "";
+    POOLS[pool].forEach((id) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = cap(label(id));
+      b.dataset.v = id;
+      b.onclick = () => answer(id);
+      o.append(b);
+    });
+    const d = $("dots");
+    d.innerHTML = "";
+    for (let i = 0; i < sequence(q.type).length; i++) d.append(document.createElement("i"));
+    // Park the reveal block outside #fb first: clearing #fb would detach it and its ids.
+    $("fb").after(reveal);
+    reveal.hidden = true;
+    $("fb").innerHTML = "";
+    $("play").disabled = false;
+    $("play").textContent = "▶ Speel de toonladder";
+    if (q.done) showResult();
+    else if (armed) play();
+  }
+  function answer(id) {
+    if (q.done) return;
+    q.done = true;
+    q.picked = id;
+    track(q.type, id === q.type);
+    stats.record(id === q.type);
+    showResult();
+  }
+  const midis = (id) => TYPES[id].up.map((o) => q.root + o);
+  function showResult() {
+    const ok = q.picked === q.type, t = TYPES[q.type];
+    $("fb").after(reveal); // feedback() clears #fb, which would detach the reveal block and its ids
+    markOptions($("opts"), q.type, q.picked);
+    const heard = q.notes.length ? `${nm(q.tonic)} ${label(q.type)}: ${q.notes.map(nm).join(" ")}. ` : "";
+    let text = heard + t.why;
+    if (q.type === "mel" && dir === "up") text += "\nOmlaag klinkt het als klein natuurlijk. Zet Richting op Op en neer om dat verschil te horen.";
+    feedback($("fb"), ok, ok ? "Goed zo!" : `Het was ${label(q.type)}.`, text, next);
+    $("fb").querySelectorAll("p").forEach((p) => (p.style.whiteSpace = "pre-line"));
+
+    // Step pattern and the scale on the keyboard; notes of the wrong pick that are not in the answer turn red.
+    const row = $("stepsrow");
+    row.innerHTML = "";
+    t.up.slice(1).forEach((o, i) => {
+      const s = o - t.up[i], c = document.createElement("span");
+      c.className = "chip" + (s === 1 ? " h" : s === 3 ? " w3" : "");
+      c.textContent = STEP[s];
+      row.append(c);
+    });
+    const good = midis(q.type), map = {};
+    good.forEach((m, i) => {
+      map[m] = { cls: i === 0 || i === good.length - 1 ? "tonic" : "scale", label: q.notes[i] ? nm(q.notes[i]) : "" };
+    });
+    let extra = 0;
+    if (!ok) midis(q.picked).forEach((m) => { if (!good.includes(m)) { map[m] = { cls: "bad", label: "" }; extra++; } });
+    kb.mark(map);
+    $("kbnote").textContent = extra ? "Rood: noten van jouw keuze die niet in het goede antwoord zitten." : "";
+    const cmp = $("cmp");
+    cmp.innerHTML = "";
+    const add = (text, id) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "go sec";
+      b.textContent = text;
+      b.onclick = () => play(id);
+      cmp.append(b);
+    };
+    add(`▶ Goed: ${label(q.type)}`, q.type);
+    if (!ok) add(`▶ Jouw keuze: ${label(q.picked)}`, q.picked);
+    const f = $("fb");
+    f.insertBefore(reveal, f.querySelector(".go"));
+    reveal.hidden = false;
+  }
+  function next() {
+    q = make();
+    render();
+  }
+
+  seg($("pool"), pool, (v) => { pool = v; save("th-pool", v); next(); });
+  seg($("dir"), dir, (v) => { dir = v; save("th-dir", v); render(); });
+  const focus = $("focus");
+  seg(focus, again ? "on" : "off", (v) => { again = v === "on"; save("th-focus", v); });
+  // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
+  focus.querySelector('[data-v="reset"]').onclick = () => {
+    weak = {};
+    try { localStorage.removeItem("th-weak"); } catch (e) {}
+  };
+  focus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
+  bindNames($("names"), () => { if (q.done) showResult(); });
+  $("play").onclick = () => play(); // not `= play`: the click event would arrive as the scale type
+  try { if (matchMedia("(max-width:600px)").matches) $("cfg").open = false; } catch (e) {}
+  next();
+</script>
