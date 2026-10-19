@@ -1,0 +1,248 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Melodisch dictee" description="Luister naar een korte melodie en schrijf de noten op de notenbalk. De eerste noot is gegeven." wrap="720px">
+<main>
+  <header>
+    <h1>Melodisch dictee</h1>
+    <p class="muted">Luister naar een korte melodie en schrijf de noten op. De eerste noot staat er al. Klik op de balk om een noot te zetten, of gebruik de pijltjes.</p>
+  </header>
+
+  <section class="box bar" aria-label="Instellingen">
+    <div class="grp"><span class="lab">Niveau</span>
+      <div class="seg" id="level" role="group" aria-label="Niveau">
+        <button type="button" data-v="step">Stappen</button><button type="button" data-v="leap">Sprongen</button><button type="button" data-v="keys">Toonsoorten</button>
+      </div></div>
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+      </div></div>
+  </section>
+
+  <section class="box" aria-live="polite">
+    <h2 id="qt">Schrijf de melodie op</h2>
+    <p class="muted" id="hint"></p>
+    <div class="staffwrap"><svg id="mine" role="img" aria-label="Notenbalk waarop je de melodie schrijft"></svg></div>
+    <div class="bar">
+      <button type="button" class="go" id="listen">▶ Luister</button>
+      <button type="button" class="go sec" id="own">▶ Mijn noten</button>
+      <div class="seg" role="group" aria-label="Noot kiezen">
+        <button type="button" id="prev" aria-label="Vorige noot">◀</button><button type="button" id="nextslot" aria-label="Volgende noot">▶</button>
+      </div>
+      <div class="seg" role="group" aria-label="Noot verplaatsen">
+        <button type="button" id="up" aria-label="Noot hoger">▲</button><button type="button" id="down" aria-label="Noot lager">▼</button>
+      </div>
+      <button type="button" class="go" id="check" disabled>Controleer</button>
+    </div>
+    <p class="muted" id="sel" aria-live="polite"></p>
+    <div id="ansbox" hidden>
+      <h3>Zo hoorde het</h3>
+      <div class="staffwrap"><svg id="ans" role="img" aria-label="De juiste melodie"></svg></div>
+    </div>
+    <div class="fb" id="fb"></div>
+  </section>
+
+  <section class="stats" id="stats" aria-label="Score"></section>
+</main>
+</Base>
+
+<style is:global>
+  #mine.pick { cursor: pointer; }
+  .hl .head { fill: var(--violet); }
+  .good .head { fill: var(--good); }
+  .bad .head { fill: var(--bad); }
+  .slot { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; }
+  .slot.on { stroke: var(--violet); stroke-dasharray: none; stroke-width: 3; }
+  .col { fill: var(--violet); opacity: 0.12; }
+  #ansbox { display: flex; flex-direction: column; gap: 6px; }
+  #ansbox[hidden] { display: none; }
+</style>
+
+<script>
+  import { $, LETTERS, nm, bindNames, pitch, midi, playMidi, stopSound, staff, el, CLEFS, STAFF_BOTTOM, GAP, store, save, seg, rnd, makeStats, feedback } from "../lib/music.js";
+
+  // Levels: n = notes in the melody (the first one is given), keys = key signatures it can use, leaps = more than steps.
+  const LEVELS = {
+    step: { n: 5, keys: [0], leaps: false },
+    leap: { n: 6, keys: [0], leaps: true },
+    keys: { n: 7, keys: [0, 1, 2, -1, -2], leaps: true },
+  };
+  const KEYS = { 0: "C", 1: "G", 2: "D", "-1": "F", "-2": "B" }; // major keys; B♭ has its tonic on B♭ (flat from the signature)
+  const SHARPS = ["F", "C", "G", "D", "A", "E", "B"], FLATS = ["B", "E", "A", "D", "G", "C", "F"];
+  const alterOf = (letter, ks) => (ks > 0 && SHARPS.slice(0, ks).includes(letter) ? 1 : ks < 0 && FLATS.slice(0, -ks).includes(letter) ? -1 : 0);
+  const letterAt = (d) => LETTERS[((d % 7) + 7) % 7];
+  const octaveAt = (d) => Math.floor(d / 7);
+  // Every note takes its accidental from the key signature, so the answer is only a position on the staff.
+  const pit = (d, ks) => ({ d, alter: alterOf(letterAt(d), ks) });
+  const noteName = (p) => nm(letterAt(p.d) + (p.alter > 0 ? "♯" : p.alter < 0 ? "♭" : ""));
+  const D_MIN = pitch("A", 3).d, D_MAX = pitch("D", 6).d;
+  const W = 460;
+
+  let level = store("dt-level", "step", Object.keys(LEVELS));
+  let q = null, busy = false, timers = [];
+  const stats = makeStats($("stats"), "dt-best");
+
+  function make() {
+    const lv = LEVELS[level];
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const ks = lv.keys[rnd(lv.keys.length)];
+      const t = pitch(KEYS[ks], ks === -2 ? 3 : 4).d; // tonic position; the B♭ key sits an octave lower to stay on the staff
+      const lo = t - 2, hi = t + 9;
+      const ds = [t + [0, 2, 4][rnd(3)]];
+      let leapBefore = false;
+      for (let tries = 0; ds.length < lv.n && tries < 60; tries++) {
+        const steps = lv.leaps && !leapBefore ? [-1, 1, -1, 1, -1, 1, -2, 2, -3, 3, -4, 4] : [-1, 1];
+        const s = steps[rnd(steps.length)], d = ds[ds.length - 1] + s;
+        if (d < lo || d > hi) continue;
+        ds.push(d);
+        leapBefore = Math.abs(s) > 1;
+      }
+      if (ds.length < lv.n) continue;
+      if (q && q.ds.join() === ds.join() && q.ks === ks) continue;
+      return { ks, ds, melody: ds.map((d) => pit(d, ks)), input: Array(lv.n).fill(null), active: 1, done: false };
+    }
+  }
+
+  // ---- drawing ----
+  // Draws a staff with the key signature and one column per note. notes[i] = pitch or null; marks[i] = css class.
+  function draw(svg, notes, o = {}) {
+    const st = staff(svg, { clef: "treble", width: W, keysig: q.ks });
+    const n = notes.length, step = (W - st.x - 30) / n;
+    const xs = notes.map((_, i) => st.x + 18 + i * step);
+    const top = STAFF_BOTTOM - 4 * GAP;
+    if (o.active != null) svg.append(el("rect", { class: "col", x: xs[o.active] - step / 2 + 2, y: top - 26, width: step - 4, height: 4 * GAP + 52, rx: 8 }));
+    notes.forEach((p, i) => {
+      if (p) st.note(p, xs[i], { noAcc: true, cls: (o.marks && o.marks[i]) || (o.hl === i ? "hl" : "") });
+      else if (o.slots) svg.append(el("ellipse", { class: "slot" + (i === o.active ? " on" : ""), cx: xs[i], cy: st.y(pitch("B", 4).d), rx: 9, ry: 6.4 }));
+    });
+    return xs;
+  }
+  let cols = [];
+  function redraw(extra = {}) {
+    const notes = q.melody.map((p, i) => (i === 0 ? p : q.input[i]));
+    cols = draw($("mine"), notes, { slots: !q.done, active: q.done ? null : q.active, marks: q.marks, ...extra });
+    $("mine").classList.toggle("pick", !q.done);
+    const filled = q.input.slice(1).every(Boolean);
+    $("check").disabled = !filled || q.done;
+    ["prev", "nextslot", "up", "down"].forEach((id) => { $(id).disabled = q.done; });
+    $("own").disabled = busy || !q.input.slice(1).some(Boolean);
+    const cur = q.input[q.active];
+    $("sel").textContent = q.done ? "" : `Noot ${q.active + 1} van ${q.melody.length}: ${cur ? noteName(cur) + octaveAt(cur.d) : "nog leeg"}.`;
+  }
+
+  // ---- sound: one melody at a time ----
+  function stopAll() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    stopSound();
+    busy = false;
+  }
+  function playList(list, indexes) {
+    if (busy) return;
+    stopAll();
+    busy = true;
+    $("listen").disabled = $("own").disabled = true;
+    const step = 0.6;
+    list.forEach((p, i) => {
+      playMidi(midi(p), i * step, i === list.length - 1 ? 1.6 : 1, 0.45);
+      timers.push(setTimeout(() => { if (q) redraw({ hl: indexes[i] }); }, 100 + i * step * 1000));
+    });
+    timers.push(setTimeout(() => {
+      busy = false;
+      $("listen").disabled = false;
+      $("listen").textContent = "▶ Nog eens luisteren";
+      redraw({ hl: null });
+    }, (list.length - 1) * step * 1000 + 1200));
+  }
+  const listen = () => playList(q.melody, q.melody.map((_, i) => i));
+  function playOwn() {
+    const idx = q.melody.map((_, i) => i).filter((i) => i === 0 || q.input[i]);
+    playList(idx.map((i) => (i === 0 ? q.melody[0] : q.input[i])), idx);
+  }
+
+  // ---- input ----
+  function place(slot, d) {
+    if (!q || q.done || slot < 1 || slot >= q.melody.length) return;
+    q.input[slot] = pit(Math.max(D_MIN, Math.min(D_MAX, d)), q.ks);
+    q.active = slot;
+    redraw();
+  }
+  $("mine").onclick = (e) => {
+    if (!q || q.done) return;
+    const svg = $("mine"), pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const { x, y } = pt.matrixTransform(svg.getScreenCTM().inverse());
+    let slot = 1;
+    for (let i = 1; i < cols.length; i++) if (Math.abs(cols[i] - x) < Math.abs(cols[slot] - x)) slot = i;
+    place(slot, Math.round(CLEFS.treble.d0 + (STAFF_BOTTOM - y) / (GAP / 2)));
+    // After a note is set, move on to the next empty slot so you can keep clicking along the melody.
+    const nextEmpty = q.input.findIndex((p, i) => i > 0 && !p);
+    if (nextEmpty > 0) { q.active = nextEmpty; redraw(); }
+  };
+  const move = (delta) => {
+    const from = q.input[q.active] ? q.input[q.active].d : (q.input[q.active - 1] || q.melody[q.active - 1]).d;
+    place(q.active, from + delta);
+  };
+  $("up").onclick = () => move(1);
+  $("down").onclick = () => move(-1);
+  $("prev").onclick = () => { q.active = Math.max(1, q.active - 1); redraw(); };
+  $("nextslot").onclick = () => { q.active = Math.min(q.melody.length - 1, q.active + 1); redraw(); };
+  $("listen").onclick = listen;
+  $("own").onclick = playOwn;
+
+  // ---- check ----
+  function name(p) {
+    return `${noteName(p)}${octaveAt(p.d)}`;
+  }
+  function check() {
+    if (q.done || !q.input.slice(1).every(Boolean)) return;
+    q.done = true;
+    stopAll();
+    q.marks = q.melody.map((p, i) => (i === 0 ? "" : q.input[i].d === p.d ? "good" : "bad"));
+    $("listen").disabled = false;
+    stats.record(q.marks.every((m) => m !== "bad"));
+    showResult();
+  }
+  function showResult() {
+    const wrong = q.melody.map((p, i) => i).filter((i) => q.marks[i] === "bad");
+    const ok = wrong.length === 0;
+    redraw();
+    draw($("ans"), q.melody, {});
+    $("ansbox").hidden = ok;
+    const right = q.melody.length - 1 - wrong.length;
+    let text = `${right} van ${q.melody.length - 1} noten goed.`;
+    if (!ok) text += " " + wrong.map((i) => `Noot ${i + 1}: jij schreef ${name(q.input[i])}, het was ${name(q.melody[i])}.`).join(" ");
+    text += "\n" + (ok ? "Tip: probeer het nu eens met een hoger niveau." : "Tip: luister of de melodie na elke noot stijgt of daalt, en hoe ver. Een stap is een naburige lijn of ruimte, een sprong slaat er minstens één over.");
+    feedback($("fb"), ok, ok ? "Foutloos!" : "Bijna.", text, next);
+    $("fb").querySelectorAll("p").forEach((p) => (p.style.whiteSpace = "pre-line"));
+  }
+  $("check").onclick = check;
+
+  // ---- flow ----
+  function render() {
+    stopAll();
+    $("ansbox").hidden = true;
+    $("fb").innerHTML = "";
+    $("listen").disabled = false;
+    $("listen").textContent = "▶ Luister";
+    const ks = q.ks;
+    $("hint").textContent = `De toonsoort is ${nm(KEYS[ks] + (ks === -2 ? "♭" : ""))} groot${ks ? ` (${Math.abs(ks)} ${ks > 0 ? (ks === 1 ? "kruis" : "kruisen") : ks === -1 ? "mol" : "mollen"})` : ""}. De eerste noot is gegeven en klinkt. Schrijf de andere ${q.melody.length - 1} noten.`;
+    redraw();
+  }
+  let armed = false;
+  function next() {
+    q = make();
+    render();
+    if (armed) listen();
+  }
+  $("listen").addEventListener("click", () => { armed = true; });
+  seg($("level"), level, (v) => { level = v; save("dt-level", v); next(); });
+  bindNames($("names"), () => {
+    if (!q) return;
+    render();
+    if (q.done) showResult();
+  });
+  next();
+</script>
