@@ -8,7 +8,7 @@ const STEM = 52;
 /** Number of beams a note value carries. */
 const beams = (dur) => (dur === 1 ? 2 : dur === 2 || dur === 3 ? 1 : 0);
 
-function restShape(g, x, y, dur) {
+export function restShape(g, x, y, dur) {
   const base = "ink";
   const stroke = { class: "stem", fill: "none", "stroke-width": 3 };
   if (dur === 8 || dur === 12) {

@@ -2,11 +2,11 @@
 import Base from "../layouts/Base.astro";
 import "../styles/components.css";
 ---
-<Base title="Melodisch dictee" description="Luister naar een korte melodie en schrijf de noten op de notenbalk. De eerste noot is gegeven." wrap="720px">
+<Base title="Melodisch dictee" description="Luister naar een korte melodie en schrijf de noten op de notenbalk, op een gegeven ritme of met het ritme erbij." wrap="720px">
 <main>
   <header>
     <h1>Melodisch dictee</h1>
-    <p class="muted">Luister naar een korte melodie en schrijf de noten op. De eerste noot staat er al. Klik op de balk om een noot te zetten, of gebruik de pijltjes.</p>
+    <p class="muted">Luister naar een korte melodie en schrijf haar op. Klik op de balk om een noot te zetten, of gebruik de pijltjes. Met "Zelf schrijven" schrijf je ook het ritme, met rusten en bindbogen.</p>
   </header>
 
   <section class="box bar" aria-label="Instellingen">
@@ -16,7 +16,7 @@ import "../styles/components.css";
       </div></div>
     <div class="grp"><span class="lab">Ritme</span>
       <div class="seg" id="rhythm" role="group" aria-label="Ritme">
-        <button type="button" data-v="quarters">Kwarten</button><button type="button" data-v="mixed">Met ritme</button>
+        <button type="button" data-v="quarters">Kwarten</button><button type="button" data-v="mixed">Gegeven</button><button type="button" data-v="write">Zelf schrijven</button>
       </div></div>
     <div class="grp"><span class="lab">Noten</span>
       <div class="seg" id="names" role="group" aria-label="Notennamen">
@@ -28,6 +28,19 @@ import "../styles/components.css";
     <h2 id="qt">Schrijf de melodie op</h2>
     <p class="muted" id="hint"></p>
     <div class="staffwrap"><svg id="mine" role="img" aria-label="Notenbalk waarop je de melodie schrijft"></svg></div>
+
+    <div id="pal" hidden>
+      <div class="lab">Noten</div>
+      <div class="pals" id="palnotes"></div>
+      <div class="lab">Rusten</div>
+      <div class="pals" id="palrests"></div>
+      <div class="pals">
+        <button type="button" class="pill" id="tie" aria-pressed="false">⌒ Bind aan volgende noot</button>
+        <button type="button" class="pill" id="undo">Wis laatste</button>
+        <button type="button" class="pill" id="clear">Opnieuw</button>
+      </div>
+    </div>
+
     <div class="bar">
       <button type="button" class="go" id="listen">▶ Luister</button>
       <button type="button" class="go sec" id="own">▶ Mijn noten</button>
@@ -57,17 +70,29 @@ import "../styles/components.css";
   .hl .head { fill: var(--violet); }
   .good .head { fill: var(--good); }
   .bad .head { fill: var(--bad); }
+  .good .head.hollow, .bad .head.hollow, .hl .head.hollow { fill: var(--card); }
+  .good .head.hollow { stroke: var(--good); }
+  .bad .head.hollow { stroke: var(--bad); }
+  .hl .head.hollow { stroke: var(--violet); }
+  .good .ink { fill: var(--good); }
+  .good .stem { stroke: var(--good); }
+  .bad .ink { fill: var(--bad); }
+  .bad .stem { stroke: var(--bad); }
+  .dim .head { fill: var(--muted); }
   .slot { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; }
   .slot.on { stroke: var(--violet); stroke-dasharray: none; stroke-width: 3; }
   .col { fill: var(--violet); opacity: 0.12; }
+  .pals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .pals .pill:disabled { opacity: 0.4; cursor: default; }
+  #pal[hidden], #ansbox[hidden] { display: none; }
   #ansbox { display: flex; flex-direction: column; gap: 6px; }
-  #ansbox[hidden] { display: none; }
 </style>
 
 <script>
   import { $, LETTERS, nm, bindNames, pitch, midi, playMidi, stopSound, staff, el, CLEFS, STAFF_BOTTOM, GAP, store, save, seg, rnd, makeStats, feedback } from "../lib/music.js";
+  import { restShape } from "../lib/rhythm.js";
 
-  // Levels: n = notes in the melody (the first one is given), keys = key signatures it can use, leaps = more than steps.
+  // Levels: n = notes in the quarter-note melody (the first one is given), keys = key signatures it can use, leaps = more than steps.
   const LEVELS = {
     step: { n: 5, keys: [0], leaps: false },
     leap: { n: 6, keys: [0], leaps: true },
@@ -81,6 +106,7 @@ import "../styles/components.css";
   // Every note takes its accidental from the key signature, so the answer is only a position on the staff.
   const pit = (d, ks) => ({ d, alter: alterOf(letterAt(d), ks) });
   const noteName = (p) => nm(letterAt(p.d) + (p.alter > 0 ? "♯" : p.alter < 0 ? "♭" : ""));
+  const full = (p) => `${noteName(p)}${octaveAt(p.d)}`;
   const D_MIN = pitch("A", 3).d, D_MAX = pitch("D", 6).d;
   const W = 460;
 
@@ -89,78 +115,149 @@ import "../styles/components.css";
     [4, 4, 4, 4], [4, 4, 2, 2, 4], [2, 2, 4, 4, 4], [4, 2, 2, 4, 4], [2, 2, 2, 2, 4, 4], [4, 2, 2, 2, 2, 4],
     [8, 4, 4], [4, 4, 8], [4, 8, 4], [6, 2, 4, 4], [4, 6, 2, 4], [6, 2, 6, 2], [8, 4, 2, 2], [2, 2, 4, 8], [2, 2, 2, 2, 8],
   ];
+  // Bars that need a tie: [length, 1] means tied to the next note (a half tied to an eighth lasts 10 sixteenths).
+  const TIE_BARS = [
+    [[8, 1], [2], [4], [2]], [[4], [8, 1], [2], [2]], [[4], [4], [4, 1], [2], [2]], [[2], [8, 1], [2], [4]], [[6, 1], [4], [2], [4]],
+  ];
+  // What you can write in "Zelf schrijven".
+  const NOTE_VALUES = [[16, "hele", "hele noot"], [12, "halve.", "halve noot met punt"], [8, "halve", "halve noot"], [6, "kwart.", "kwartnoot met punt"], [4, "kwart", "kwartnoot"], [2, "achtste", "achtste"]];
+  const REST_VALUES = [[16, "hele rust", "hele rust"], [8, "halve rust", "halve rust"], [4, "kwartrust", "kwartrust"], [2, "achtste rust", "achtste rust"]];
+  const NAMES = Object.fromEntries(NOTE_VALUES.map(([d, , n]) => [d, n]));
+  const RNAMES = Object.fromEntries(REST_VALUES.map(([d, , n]) => [d, n]));
   const MID = pitch("B", 4).d; // the middle line: notes below it get stems up
+
   let level = store("dt-level", "step", Object.keys(LEVELS));
-  let rhythm = store("dt-rhythm", "quarters", ["quarters", "mixed"]);
-  let q = null, busy = false, timers = [];
+  let rhythm = store("dt-rhythm", "quarters", ["quarters", "mixed", "write"]);
+  let q = null, busy = false, timers = [], armed = false;
   const stats = makeStats($("stats"), "dt-best");
 
+  // Events: {on, dur, rest, tie (tied to the next note), p (pitch), fixed (given)}. Times in sixteenths.
+  const isPartner = (evs, i) => i > 0 && evs[i - 1].tie && !evs[i].rest;
+  const isSlot = (evs, i) => !evs[i].rest && !isPartner(evs, i) && !evs[i].fixed;
+  const slots = (evs) => evs.map((_, i) => i).filter((i) => isSlot(evs, i));
+  const used = (evs) => evs.reduce((a, e) => a + e.dur, 0);
+  /** What can be heard: tied notes merge into one, rests stay silent. */
+  function sounding(evs) {
+    const out = [];
+    evs.forEach((e, i) => {
+      if (isPartner(evs, i) && out.length && !out[out.length - 1].rest) {
+        out[out.length - 1].dur += e.dur;
+        out[out.length - 1].last = i;
+      } else out.push({ on: e.on, dur: e.dur, rest: e.rest, d: e.p ? e.p.d : null, first: i, last: i });
+    });
+    return out;
+  }
+  const describe = (evs) => {
+    let s = "";
+    evs.forEach((e, i) => {
+      s += (i === 0 ? "" : isPartner(evs, i) ? " ⌒ " : ", ") + (e.rest ? RNAMES[e.dur] || `rust (${e.dur})` : NAMES[e.dur] || `noot (${e.dur})`);
+    });
+    return s;
+  };
+
+  // ---- generating a melody ----
+  function rhythmSpec(mode, lv) {
+    if (mode === "quarters") return Array(lv.n).fill(0).map(() => ({ dur: 4, rest: false, tie: false }));
+    if (mode === "mixed") return BARS[rnd(BARS.length)].map((dur) => ({ dur, rest: false, tie: false }));
+    if (Math.random() < 0.45) return TIE_BARS[rnd(TIE_BARS.length)].map(([dur, tie]) => ({ dur, rest: false, tie: !!tie }));
+    const spec = BARS[rnd(BARS.length)].map((dur) => ({ dur, rest: false, tie: false }));
+    // turn up to two eighths, quarters or halves into rests, keeping at least three sounding notes
+    for (let k = rnd(3); k > 0; k--) {
+      const i = rnd(spec.length);
+      if ([2, 4, 8].includes(spec[i].dur) && spec.filter((e) => !e.rest).length > 3) spec[i].rest = true;
+    }
+    return spec;
+  }
   function make() {
-    const lv = LEVELS[level], mixed = rhythm === "mixed";
-    for (let attempt = 0; attempt < 200; attempt++) {
+    const lv = LEVELS[level];
+    for (let attempt = 0; attempt < 300; attempt++) {
       const ks = lv.keys[rnd(lv.keys.length)];
-      const durs = mixed ? BARS[rnd(BARS.length)].slice() : Array(lv.n).fill(4);
-      const n = durs.length;
+      const spec = rhythmSpec(rhythm, lv);
+      const groups = spec.filter((e, i) => !e.rest && !(i > 0 && spec[i - 1].tie)).length; // pitches to write
       const t = pitch(KEYS[ks], ks === -2 ? 3 : 4).d; // tonic position; the B♭ key sits an octave lower to stay on the staff
       const lo = t - 2, hi = t + 9;
       const ds = [t + [0, 2, 4][rnd(3)]];
       let leapBefore = false;
-      for (let tries = 0; ds.length < n && tries < 60; tries++) {
+      for (let tries = 0; ds.length < groups && tries < 60; tries++) {
         const steps = lv.leaps && !leapBefore ? [-1, 1, -1, 1, -1, 1, -2, 2, -3, 3, -4, 4] : [-1, 1];
         const s = steps[rnd(steps.length)], d = ds[ds.length - 1] + s;
         if (d < lo || d > hi) continue;
         ds.push(d);
         leapBefore = Math.abs(s) > 1;
       }
-      if (ds.length < n) continue;
-      if (q && q.ds.join() === ds.join() && q.durs.join() === durs.join() && q.ks === ks) continue;
-      const ons = durs.map((_, i) => durs.slice(0, i).reduce((a, b) => a + b, 0));
-      return { ks, ds, durs, ons, mixed, total: mixed ? 16 : n * 4, melody: ds.map((d) => pit(d, ks)), input: Array(n).fill(null), active: 1, done: false };
+      if (ds.length < groups) continue;
+      let on = 0, k = 0, prev = null;
+      const ev = spec.map((e, i) => {
+        const o = { on, dur: e.dur, rest: e.rest, tie: e.tie, p: null };
+        if (!e.rest) { o.p = i > 0 && spec[i - 1].tie ? prev : pit(ds[k++], ks); prev = o.p; }
+        on += e.dur;
+        return o;
+      });
+      const key = ev.map((e) => `${e.dur}${e.rest ? "r" : ""}${e.tie ? "t" : ""}:${e.p ? e.p.d : ""}`).join();
+      if (q && q.key === key && q.ks === ks) continue;
+      const write = rhythm === "write";
+      const u = write ? [] : ev.map((e, i) => ({ ...e, p: i === 0 ? e.p : null, fixed: i === 0 }));
+      return { ks, ev, u, key, mode: rhythm, write, total: rhythm === "quarters" ? ev.length * 4 : 16, active: write ? -1 : slots(u)[0], done: false };
     }
   }
 
   // ---- drawing ----
-  // Draws a staff with the key signature and the notes at their place in time. notes[i] = pitch or null.
-  function draw(svg, notes, o = {}) {
+  /** Draws a staff with the key signature and the events at their place in the bar. */
+  function draw(svg, evs, o = {}) {
     const st = staff(svg, { clef: "treble", width: W, keysig: q.ks });
     const top = STAFF_BOTTOM - 4 * GAP;
-    const x0 = st.x + (q.mixed ? 36 : 18), span = W - 30 - x0;
-    const xs = q.ons.map((on) => x0 + (on / q.total) * span);
-    if (q.mixed) {
+    const timed = q.mode !== "quarters";
+    const x0 = st.x + (timed ? 36 : 18), span = W - 30 - x0;
+    const xs = evs.map((e) => x0 + (e.on / q.total) * span);
+    if (timed) {
       const style = "font:800 34px var(--display);fill:var(--ink);text-anchor:middle";
       svg.append(el("text", { x: st.x + 10, y: STAFF_BOTTOM - 2 * GAP - 2, style }, "4"));
       svg.append(el("text", { x: st.x + 10, y: STAFF_BOTTOM - 2, style }, "4"));
       svg.append(el("line", { class: "line", x1: W - 12, x2: W - 12, y1: top, y2: STAFF_BOTTOM }));
     }
-    if (o.active != null) svg.append(el("rect", { class: "col", x: xs[o.active] - 15, y: top - 26, width: 30, height: 4 * GAP + 52, rx: 8 }));
+    if (o.active != null && o.active >= 0 && xs[o.active] != null) svg.append(el("rect", { class: "col", x: xs[o.active] - 15, y: top - 26, width: 30, height: 4 * GAP + 52, rx: 8 }));
+    const ghost = pit(MID, q.ks);
+    const P = evs.map((e) => (e.rest ? null : e.p || (o.ghost ? ghost : null)));
     // two eighths on the same beat share a beam
-    const second = new Set(), pairs = [];
-    q.durs.forEach((d, i) => {
-      if (d === 2 && q.durs[i + 1] === 2 && q.ons[i] % 4 === 0 && !second.has(i) && notes[i] && notes[i + 1]) { pairs.push([i, i + 1]); second.add(i + 1); }
+    const pairs = [], inPair = new Set();
+    evs.forEach((e, i) => {
+      const n = evs[i + 1];
+      if (n && !inPair.has(i) && e.dur === 2 && n.dur === 2 && !e.rest && !n.rest && !e.tie && e.on % 4 === 0 && P[i] && P[i + 1]) { pairs.push([i, i + 1]); inPair.add(i); inPair.add(i + 1); }
     });
-    const beamed = new Set(pairs.flat());
-    const stemUp = notes.map((p) => (p ? p.d < MID : true));
-    pairs.forEach(([a, b]) => { stemUp[a] = stemUp[b] = (notes[a].d + notes[b].d) / 2 < MID; });
+    const stemUp = P.map((p) => (p ? p.d < MID : true));
+    pairs.forEach(([a, b]) => { stemUp[a] = stemUp[b] = (P[a].d + P[b].d) / 2 < MID; });
     const stem = (i, x, y, tip) => {
       const sx = stemUp[i] ? x + 8.3 : x - 8.3;
       svg.append(el("line", { class: "stem", x1: sx, x2: sx, y1: y, y2: tip }));
       return sx;
     };
-    notes.forEach((p, i) => {
-      if (!p) {
-        if (o.slots) svg.append(el("ellipse", { class: "slot" + (i === o.active ? " on" : ""), cx: xs[i], cy: st.y(pitch("B", 4).d), rx: 9, ry: 6.4 }));
+    evs.forEach((e, i) => {
+      const x = xs[i], mark = (o.marks && o.marks[i]) || "";
+      if (e.rest) {
+        const g = el("g", { class: mark });
+        restShape(g, x, e.dur === 16 ? st.y(MID + 2) : st.y(MID), e.dur);
+        svg.append(g);
         return;
       }
-      const dur = q.durs[i], x = xs[i], y = st.y(p.d);
-      st.note(p, x, { stem: false, noAcc: true, hollow: dur >= 8, cls: (o.marks && o.marks[i]) || (o.hl === i ? "hl" : "") });
-      if (dur === 6) svg.append(el("circle", { class: "ink", cx: x + 16, cy: (p.d - 30) % 2 === 0 ? y - GAP / 2 : y, r: 2.8 }));
-      if (beamed.has(i)) return;
+      const p = P[i];
+      if (!p) {
+        if (o.slots && isSlot(evs, i)) svg.append(el("ellipse", { class: "slot" + (i === o.active ? " on" : ""), cx: x, cy: st.y(MID), rx: 9, ry: 6.4 }));
+        return;
+      }
+      const y = st.y(p.d);
+      st.note(p, x, { stem: false, noAcc: true, hollow: e.dur >= 8, cls: mark || (o.hl === i ? "hl" : !e.p ? "dim" : "") });
+      if (e.dur === 6 || e.dur === 12) svg.append(el("circle", { class: "ink", cx: x + 16, cy: (p.d - 30) % 2 === 0 ? y - GAP / 2 : y, r: 2.8 }));
+      if (e.tie && evs[i + 1] && P[i + 1]) {
+        const x2 = xs[i + 1], dy = stemUp[i] ? 12 : -12, bend = stemUp[i] ? 18 : -18;
+        svg.append(el("path", { class: "stem", fill: "none", "stroke-width": 2.2, d: `M${x + 6} ${y + dy} Q${(x + x2) / 2} ${y + dy + bend} ${x2 - 6} ${y + dy}` }));
+      }
+      if (inPair.has(i) || e.dur === 16) return;
       const tip = stemUp[i] ? y - 52 : y + 52;
       const sx = stem(i, x, y, tip);
-      if (dur === 2) svg.append(el("path", { class: "stem", fill: "none", "stroke-width": 3.2, d: stemUp[i] ? `M${sx} ${tip} q 14 10 9 26` : `M${sx} ${tip} q 14 -10 9 -26` }));
+      if (e.dur === 2) svg.append(el("path", { class: "stem", fill: "none", "stroke-width": 3.2, d: stemUp[i] ? `M${sx} ${tip} q 14 10 9 26` : `M${sx} ${tip} q 14 -10 9 -26` }));
     });
     pairs.forEach(([a, b]) => {
-      const up = stemUp[a], ya = st.y(notes[a].d), yb = st.y(notes[b].d);
+      const up = stemUp[a], ya = st.y(P[a].d), yb = st.y(P[b].d);
       const tip = up ? Math.min(ya, yb) - 52 : Math.max(ya, yb) + 52;
       const sa = stem(a, xs[a], ya, tip), sb = stem(b, xs[b], yb, tip);
       svg.append(el("rect", { class: "ink", x: sa - 1.2, y: up ? tip : tip - 6, width: sb - sa + 2.4, height: 6 }));
@@ -168,16 +265,33 @@ import "../styles/components.css";
     return xs;
   }
   let cols = [];
+  const phase = () => (!q.write || used(q.u) === 16 ? "pitch" : "rhythm");
+  const ready = () => phase() === "pitch" && slots(q.u).length > 0 && slots(q.u).every((i) => q.u[i].p);
   function redraw(extra = {}) {
-    const notes = q.melody.map((p, i) => (i === 0 ? p : q.input[i]));
-    cols = draw($("mine"), notes, { slots: !q.done, active: q.done ? null : q.active, marks: q.marks, ...extra });
-    $("mine").classList.toggle("pick", !q.done);
-    const filled = q.input.slice(1).every(Boolean);
-    $("check").disabled = !filled || q.done;
-    ["prev", "nextslot", "up", "down"].forEach((id) => { $(id).disabled = q.done; });
-    $("own").disabled = busy || !q.input.slice(1).some(Boolean);
-    const cur = q.input[q.active];
-    $("sel").textContent = q.done ? "" : `Noot ${q.active + 1} van ${q.melody.length}: ${cur ? noteName(cur) + octaveAt(cur.d) : "nog leeg"}.`;
+    const ph = phase();
+    cols = draw($("mine"), q.u, { slots: !q.done && ph === "pitch", ghost: q.write && !q.done, active: q.done || ph !== "pitch" ? null : q.active, marks: q.marks, ...extra });
+    $("mine").classList.toggle("pick", !q.done && ph === "pitch");
+    const pitchNow = !q.done && ph === "pitch";
+    ["prev", "nextslot", "up", "down"].forEach((id) => { $(id).disabled = !pitchNow; });
+    $("check").disabled = !ready() || q.done;
+    $("own").disabled = busy || !q.u.some((e) => !e.rest);
+    // palette
+    const pal = q.write && !q.done;
+    $("pal").hidden = !pal;
+    if (pal) {
+      const rem = 16 - used(q.u), last = q.u[q.u.length - 1];
+      $("palnotes").querySelectorAll("button").forEach((b) => { b.disabled = Number(b.dataset.d) > rem; });
+      $("palrests").querySelectorAll("button").forEach((b) => { b.disabled = Number(b.dataset.d) > rem || !!(last && last.tie); });
+      $("tie").disabled = !last || last.rest || rem === 0;
+      $("tie").setAttribute("aria-pressed", String(!!(last && last.tie)));
+      $("undo").disabled = $("clear").disabled = q.u.length === 0;
+    }
+    if (q.done) $("sel").textContent = "";
+    else if (q.write && ph === "rhythm") $("sel").textContent = `Maat: ${String(used(q.u) / 4).replace(".", ",")} van 4 tellen. Voeg noten en rusten toe tot de maat vol is.`;
+    else {
+      const e = q.u[q.active], k = slots(q.u).indexOf(q.active) + 1;
+      $("sel").textContent = e ? `Noot ${k} van ${slots(q.u).length}: ${e.p ? full(e.p) : "nog leeg"}.` : "";
+    }
   }
 
   // ---- sound: one melody at a time ----
@@ -188,85 +302,144 @@ import "../styles/components.css";
     busy = false;
   }
   const U = 0.15; // seconds per sixteenth: a quarter note lasts 0.6 s
-  function playList(list, indexes) {
-    if (busy) return;
+  function playEvents(evs, ghost) {
+    const list = sounding(evs).filter((x) => !x.rest && (x.d != null || ghost));
+    if (busy || !list.length) return;
     stopAll();
     busy = true;
     $("listen").disabled = $("own").disabled = true;
-    list.forEach((p, i) => {
-      const idx = indexes[i], t = q.ons[idx] * U;
-      playMidi(midi(p), t, Math.min(1.6, Math.max(0.4, q.durs[idx] * U * 1.3)), 0.45);
-      timers.push(setTimeout(() => { if (q) redraw({ hl: idx }); }, 100 + t * 1000));
+    list.forEach((x) => {
+      const p = pit(x.d != null ? x.d : MID, q.ks), t = x.on * U;
+      playMidi(midi(p), t, Math.min(1.6, Math.max(0.4, x.dur * U * 1.3)), 0.45);
+      timers.push(setTimeout(() => { if (q) redraw({ hl: x.first }); }, 100 + t * 1000));
     });
-    const last = indexes[indexes.length - 1];
+    const end = Math.max(...list.map((x) => x.on + x.dur));
     timers.push(setTimeout(() => {
       busy = false;
       $("listen").disabled = false;
       $("listen").textContent = "▶ Nog eens luisteren";
       redraw({ hl: null });
-    }, (q.ons[last] + q.durs[last]) * U * 1000 + 900));
+    }, end * U * 1000 + 900));
   }
-  const listen = () => playList(q.melody, q.melody.map((_, i) => i));
-  function playOwn() {
-    const idx = q.melody.map((_, i) => i).filter((i) => i === 0 || q.input[i]);
-    playList(idx.map((i) => (i === 0 ? q.melody[0] : q.input[i])), idx);
-  }
+  const listen = () => playEvents(q.ev, false);
+  const playOwn = () => playEvents(q.u, true);
 
-  // ---- input ----
-  function place(slot, d) {
-    if (!q || q.done || slot < 1 || slot >= q.melody.length) return;
-    q.input[slot] = pit(Math.max(D_MIN, Math.min(D_MAX, d)), q.ks);
-    q.active = slot;
+  // ---- writing the rhythm ----
+  function addEvent(dur, rest) {
+    if (!q.write || q.done) return;
+    const rem = 16 - used(q.u), last = q.u[q.u.length - 1];
+    if (dur > rem || (rest && last && last.tie)) return;
+    const partner = last && last.tie && !rest;
+    q.u.push({ on: used(q.u), dur, rest, tie: false, p: partner ? last.p : null });
+    q.active = slots(q.u)[0];
+    redraw();
+  }
+  function palette(host, values, rest) {
+    values.forEach(([dur, text, aria]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill";
+      b.textContent = text;
+      b.dataset.d = String(dur);
+      b.setAttribute("aria-label", aria);
+      b.onclick = () => addEvent(dur, rest);
+      host.append(b);
+    });
+  }
+  palette($("palnotes"), NOTE_VALUES, false);
+  palette($("palrests"), REST_VALUES, true);
+  $("tie").onclick = () => {
+    const last = q.u[q.u.length - 1];
+    if (!last || last.rest || used(q.u) === 16) return;
+    last.tie = !last.tie;
+    redraw();
+  };
+  $("undo").onclick = () => { q.u.pop(); q.active = slots(q.u)[0]; redraw(); };
+  $("clear").onclick = () => { q.u = []; q.active = -1; redraw(); };
+
+  // ---- writing the pitches ----
+  function place(i, d) {
+    if (!q || q.done || phase() !== "pitch" || !q.u[i] || !isSlot(q.u, i)) return;
+    const p = pit(Math.max(D_MIN, Math.min(D_MAX, d)), q.ks);
+    q.u[i].p = p;
+    for (let j = i; q.u[j].tie && q.u[j + 1] && !q.u[j + 1].rest; j++) q.u[j + 1].p = p; // a tied note keeps its pitch
+    q.active = i;
     redraw();
   }
   $("mine").onclick = (e) => {
-    if (!q || q.done) return;
+    if (!q || q.done || phase() !== "pitch") return;
     const svg = $("mine"), pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
     const { x, y } = pt.matrixTransform(svg.getScreenCTM().inverse());
-    let slot = 1;
-    for (let i = 1; i < cols.length; i++) if (Math.abs(cols[i] - x) < Math.abs(cols[slot] - x)) slot = i;
+    const sl = slots(q.u);
+    if (!sl.length) return;
+    let slot = sl[0];
+    sl.forEach((i) => { if (Math.abs(cols[i] - x) < Math.abs(cols[slot] - x)) slot = i; });
     place(slot, Math.round(CLEFS.treble.d0 + (STAFF_BOTTOM - y) / (GAP / 2)));
     // After a note is set, move on to the next empty slot so you can keep clicking along the melody.
-    const nextEmpty = q.input.findIndex((p, i) => i > 0 && !p);
-    if (nextEmpty > 0) { q.active = nextEmpty; redraw(); }
+    const nextEmpty = slots(q.u).find((i) => !q.u[i].p);
+    if (nextEmpty != null) { q.active = nextEmpty; redraw(); }
   };
   const move = (delta) => {
-    const from = q.input[q.active] ? q.input[q.active].d : (q.input[q.active - 1] || q.melody[q.active - 1]).d;
-    place(q.active, from + delta);
+    const sl = slots(q.u), k = sl.indexOf(q.active);
+    if (k < 0) return;
+    const given = q.u.find((e) => e.fixed && e.p);
+    const before = k > 0 ? q.u[sl[k - 1]].p : given && given.p;
+    place(q.active, (q.u[q.active].p || before || pit(MID, q.ks)).d + delta);
   };
   $("up").onclick = () => move(1);
   $("down").onclick = () => move(-1);
-  $("prev").onclick = () => { q.active = Math.max(1, q.active - 1); redraw(); };
-  $("nextslot").onclick = () => { q.active = Math.min(q.melody.length - 1, q.active + 1); redraw(); };
-  $("listen").onclick = listen;
+  $("prev").onclick = () => { const sl = slots(q.u), k = sl.indexOf(q.active); q.active = sl[Math.max(0, k - 1)]; redraw(); };
+  $("nextslot").onclick = () => { const sl = slots(q.u), k = sl.indexOf(q.active); q.active = sl[Math.min(sl.length - 1, k + 1)]; redraw(); };
+  $("listen").onclick = () => { armed = true; listen(); };
   $("own").onclick = playOwn;
 
   // ---- check ----
-  function name(p) {
-    return `${noteName(p)}${octaveAt(p.d)}`;
-  }
   function check() {
-    if (q.done || !q.input.slice(1).every(Boolean)) return;
+    if (q.done || !ready()) return;
     q.done = true;
     stopAll();
-    q.marks = q.melody.map((p, i) => (i === 0 ? "" : q.input[i].d === p.d ? "good" : "bad"));
     $("listen").disabled = false;
-    stats.record(q.marks.every((m) => m !== "bad"));
+    const A = sounding(q.ev), B = sounding(q.u);
+    const sameRhythm = A.length === B.length && A.every((a, i) => a.on === B[i].on && a.dur === B[i].dur && a.rest === B[i].rest);
+    // a written note is right when a note of the answer starts at the same moment with the same pitch
+    const good = (b) => (b.rest ? A.some((a) => a.rest && a.on === b.on && a.dur === b.dur) : A.some((a) => !a.rest && a.on === b.on && a.d === b.d));
+    q.marks = q.u.map(() => "");
+    B.forEach((b) => {
+      if (q.u[b.first].fixed) return;
+      for (let i = b.first; i <= b.last; i++) q.marks[i] = good(b) ? "good" : "bad";
+    });
+    const given = (a) => q.mode !== "write" && a.first === 0;
+    const notesA = A.filter((a) => !a.rest);
+    const pitchRight = notesA.filter((a) => !given(a) && B.some((b) => !b.rest && b.on === a.on && b.d === a.d)).length;
+    const total = notesA.filter((a) => !given(a)).length;
+    q.result = { sameRhythm, pitchRight, total, A, B, notesA, given };
+    stats.record(sameRhythm && pitchRight === total);
     showResult();
   }
   function showResult() {
-    const wrong = q.melody.map((p, i) => i).filter((i) => q.marks[i] === "bad");
-    const ok = wrong.length === 0;
+    const { sameRhythm, pitchRight, total, B, notesA, given } = q.result;
+    const ok = sameRhythm && pitchRight === total;
     redraw();
-    draw($("ans"), q.melody, {});
+    draw($("ans"), q.ev, {});
     $("ansbox").hidden = ok;
-    const right = q.melody.length - 1 - wrong.length;
-    let text = `${right} van ${q.melody.length - 1} noten goed.`;
-    if (!ok) text += " " + wrong.map((i) => `Noot ${i + 1}: jij schreef ${name(q.input[i])}, het was ${name(q.melody[i])}.`).join(" ");
-    text += "\n" + (ok ? "Tip: probeer het nu eens met een hoger niveau." : "Tip: luister of de melodie na elke noot stijgt of daalt, en hoe ver. Een stap is een naburige lijn of ruimte, een sprong slaat er minstens één over.");
-    feedback($("fb"), ok, ok ? "Foutloos!" : "Bijna.", text, next);
+    const lines = [];
+    if (q.write) {
+      if (!sameRhythm) lines.push(`Het ritme klopt niet. Het was: ${describe(q.ev)}. Jij schreef: ${describe(q.u)}.`);
+      else if (describe(q.ev) !== describe(q.u)) lines.push("Het ritme klopt. Jij schreef het anders, maar het klinkt hetzelfde (het kan op meer manieren).");
+      else lines.push("Het ritme klopt.");
+    }
+    lines.push(`${pitchRight} van ${total} noten goed.`);
+    const wrong = notesA.map((a, k) => ({ a, k })).filter(({ a }) => !given(a) && !B.some((b) => !b.rest && b.on === a.on && b.d === a.d));
+    if (wrong.length) {
+      lines.push(wrong.map(({ a, k }) => {
+        const b = B.find((x) => !x.rest && x.on === a.on);
+        return `Noot ${k + 1}: ${b ? `jij schreef ${full(pit(b.d, q.ks))}, ` : "op die plek schreef je geen noot, "}het was ${full(q.ev[a.first].p)}.`;
+      }).join(" "));
+    }
+    lines.push(ok ? "Tip: probeer het nu eens met een hoger niveau of een lastiger ritme." : "Tip: luister of de melodie na elke noot stijgt of daalt, en hoe ver. Een stap is een naburige lijn of ruimte, een sprong slaat er minstens één over.");
+    feedback($("fb"), ok, ok ? "Foutloos!" : "Bijna.", lines.join("\n"), next);
     $("fb").querySelectorAll("p").forEach((p) => (p.style.whiteSpace = "pre-line"));
   }
   $("check").onclick = check;
@@ -279,16 +452,17 @@ import "../styles/components.css";
     $("listen").disabled = false;
     $("listen").textContent = "▶ Luister";
     const ks = q.ks;
-    $("hint").textContent = `De toonsoort is ${nm(KEYS[ks] + (ks === -2 ? "♭" : ""))} groot${ks ? ` (${Math.abs(ks)} ${ks > 0 ? (ks === 1 ? "kruis" : "kruisen") : ks === -1 ? "mol" : "mollen"})` : ""}.${q.mixed ? " Het ritme staat er al." : ""} De eerste noot is gegeven en klinkt. Schrijf de andere ${q.melody.length - 1} noten.`;
+    const key = `De toonsoort is ${nm(KEYS[ks] + (ks === -2 ? "♭" : ""))} groot${ks ? ` (${Math.abs(ks)} ${ks > 0 ? (ks === 1 ? "kruis" : "kruisen") : ks === -1 ? "mol" : "mollen"})` : ""}.`;
+    const first = q.ev.find((e) => !e.rest);
+    if (q.write) $("hint").textContent = `${key} Schrijf eerst het ritme met noten, rusten en bindbogen tot de maat vol is. Daarna zet je de noten. De melodie begint met ${full(first.p)}.`;
+    else $("hint").textContent = `${key}${q.mode === "mixed" ? " Het ritme staat er al." : ""} De eerste noot is gegeven en klinkt. Schrijf de andere ${slots(q.u).length} noten.`;
     redraw();
   }
-  let armed = false;
   function next() {
     q = make();
     render();
     if (armed) listen();
   }
-  $("listen").addEventListener("click", () => { armed = true; });
   seg($("level"), level, (v) => { level = v; save("dt-level", v); next(); });
   seg($("rhythm"), rhythm, (v) => { rhythm = v; save("dt-rhythm", v); next(); });
   bindNames($("names"), () => {
