@@ -27,6 +27,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .pill[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .go { background: var(--violet); color: var(--onviolet); border: 2px solid var(--ink); border-radius: 999px; font: 800 17px var(--display); padding: 9px 22px; cursor: pointer; }
 .go:hover { filter: brightness(1.12); }
+a.go { display: inline-block; text-decoration: none; text-align: center; }
 .go.sec { background: var(--card); color: var(--ink); }
 .go.sec:hover { background: var(--sun); color: #1d1b3a; filter: none; }
 select { font: 600 15px var(--body); color: var(--ink); background: var(--card); border: 2px solid var(--ink); border-radius: 12px; height: 40px; padding: 0 10px; }

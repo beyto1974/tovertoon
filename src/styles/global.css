@@ -70,19 +70,54 @@ body {
   text-decoration: none;
   letter-spacing: -0.01em;
 }
-.site-nav ul { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.site-nav ul { list-style: none; margin: 0; padding: 0; }
+.site-nav .menus { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.site-nav .menus > li { position: relative; }
+.site-nav summary {
+  list-style: none;
+  cursor: pointer;
+  font: 600 15px var(--body);
+  color: var(--ink);
+  padding: 6px 14px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  user-select: none;
+}
+.site-nav summary::-webkit-details-marker { display: none; }
+.site-nav summary::after { content: " ▾"; font-size: 12px; }
+.site-nav details[open] > summary::after { content: " ▴"; }
+.site-nav summary:hover, .site-nav details[open] > summary { background: var(--sun); color: #1d1b3a; border-color: var(--ink); }
+.site-nav summary[aria-current] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.site-nav details[open] > summary[aria-current] { background: var(--sun); color: #1d1b3a; }
+.site-nav .menu > ul {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 230px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+}
+.site-nav .menus > li:last-child .menu > ul { left: auto; right: 0; }
 .site-nav li a {
   display: block;
   font: 600 15px var(--body);
   color: var(--ink);
   text-decoration: none;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
 }
 .site-nav li a:hover { background: var(--sun); color: #1d1b3a; border-color: var(--ink); }
 .site-nav li a[aria-current="page"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.site-nav a:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+.site-nav a:focus-visible, .site-nav summary:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+main p a:not(.go) { color: var(--violet); font-weight: 600; text-underline-offset: 3px; }
 .site-foot {
   max-width: var(--wrap, 820px);
   margin: 40px auto 0;

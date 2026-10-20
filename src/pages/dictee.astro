@@ -93,7 +93,7 @@ import "../styles/components.css";
   @media (max-width: 600px) {
     body { padding-block: 6px; }
     .site-nav { margin-bottom: 6px; }
-    .site-nav ul, .site-foot { display: none; }
+    .site-foot { display: none; }
     main { gap: 8px; }
     header p { display: none; }
     h1 { font-size: 22px; margin: 0; }
@@ -304,6 +304,14 @@ import "../styles/components.css";
     $("mine").classList.toggle("pick", !q.done && ph === "pitch");
     const pitchNow = !q.done && ph === "pitch";
     ["prev", "nextslot", "up", "down"].forEach((id) => { $(id).disabled = !pitchNow; });
+    if (pitchNow) {
+      // each step button is disabled where it would do nothing: first and last note, top and bottom of the range
+      const sl = slots(q.u), k = sl.indexOf(q.active), cur = q.u[q.active] && q.u[q.active].p;
+      $("prev").disabled = k <= 0;
+      $("nextslot").disabled = k < 0 || k >= sl.length - 1;
+      $("up").disabled = !!cur && cur.d >= D_MAX;
+      $("down").disabled = !!cur && cur.d <= D_MIN;
+    }
     $("check").disabled = !ready() || q.done;
     $("own").disabled = busy || !q.u.some((e) => !e.rest);
     // palette

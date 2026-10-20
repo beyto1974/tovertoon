@@ -96,6 +96,9 @@ import "../styles/components.css";
       st.note(p, nx, { stem: false });
       $("vname").textContent = nm(letterOf(p)) + octaveOf(p);
     } else $("vname").textContent = "Klik op een lijn of ruimte";
+    // the range ends five steps beyond the staff; further steps would do nothing
+    ($("lower") as HTMLButtonElement).disabled = vsel !== null && vsel <= c.d0 - 6;
+    ($("higher") as HTMLButtonElement).disabled = vsel !== null && vsel >= c.d0 + 14;
   }
   function select(d) {
     vsel = d;

@@ -81,7 +81,7 @@ import "../styles/components.css";
   @media (max-width: 600px) {
     body { padding-block: 6px; }
     .site-nav { margin-bottom: 6px; }
-    .site-nav ul, .site-foot { display: none; }
+    .site-foot { display: none; }
     main { gap: 8px; }
     header p, #hint { display: none; }
     h1 { font-size: 22px; margin: 0; }
@@ -255,5 +255,4 @@ import "../styles/components.css";
   ($("countin") as HTMLInputElement).onchange = (e) => save("rd-countin", (e.target as HTMLInputElement).checked ? "1" : "0");
   try { if (matchMedia("(max-width:600px)").matches) ($("cfg") as HTMLDetailsElement).open = false; } catch (e) {}
   fresh();
-  (window as any).__rd = () => q;
 </script>

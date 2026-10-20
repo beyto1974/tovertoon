@@ -14,19 +14,28 @@ interface Props {
 const { title, description = "Muziektheorie om mee te spelen.", wrap = "820px" } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const path = Astro.url.pathname.replace(/\/$/, "");
-const links = [
-  { href: `${base}/notenbalk`, label: "Notenbalk" },
-  { href: `${base}/intervallen`, label: "Intervallen" },
-  { href: `${base}/dictee`, label: "Dictee" },
-  { href: `${base}/voortekening`, label: "Voortekening" },
-  { href: `${base}/kwintencirkel`, label: "Kwintencirkel" },
-  { href: `${base}/toonladders-bouwen`, label: "Toonladders bouwen" },
-  { href: `${base}/toonladders-oefenen`, label: "Toonladders oefenen" },
-  { href: `${base}/toonladders-horen`, label: "Toonladders horen" },
-  { href: `${base}/ritme`, label: "Ritme" },
-  { href: `${base}/ritme-volgorde`, label: "Ritme volgorde" },
-  { href: `${base}/ritme-dictee`, label: "Ritme dictee" },
-  { href: `${base}/maatsoorten`, label: "Maatsoorten" },
+const groups = [
+  { label: "Noten lezen", links: [
+    { href: `${base}/notenbalk`, label: "Notenbalk" },
+    { href: `${base}/intervallen`, label: "Intervallen" },
+    { href: `${base}/intervallen-oefenen`, label: "Intervallen oefenen" },
+    { href: `${base}/dictee`, label: "Melodisch dictee" },
+  ] },
+  { label: "Toonladders", links: [
+    { href: `${base}/voortekening`, label: "Voortekening" },
+    { href: `${base}/kwintencirkel`, label: "Kwintencirkel" },
+    { href: `${base}/toonladders-bouwen`, label: "Toonladders bouwen" },
+    { href: `${base}/toonladders-spelen`, label: "Toonladders spelen" },
+    { href: `${base}/toonladders-oefenen`, label: "Toonladders oefenen" },
+    { href: `${base}/toonladders-horen`, label: "Toonladders horen" },
+  ] },
+  { label: "Ritme", links: [
+    { href: `${base}/maatsoorten`, label: "Maatsoorten" },
+    { href: `${base}/ritme`, label: "Ritme lezen" },
+    { href: `${base}/ritme-herkennen`, label: "Ritme herkennen" },
+    { href: `${base}/ritme-volgorde`, label: "Ritme volgorde" },
+    { href: `${base}/ritme-dictee`, label: "Ritme dictee" },
+  ] },
 ];
 ---
 <!doctype html>
@@ -46,9 +55,18 @@ const links = [
   <body style={`--wrap:${wrap}`}>
     <nav class="site-nav" aria-label="Hoofdmenu">
       <a class="brand" href={`${base}/`}>Tovertoon</a>
-      <ul>
-        {links.map((l) => (
-          <li><a href={l.href} aria-current={path === l.href ? "page" : undefined}>{l.label}</a></li>
+      <ul class="menus">
+        {groups.map((g) => (
+          <li>
+            <details class="menu">
+              <summary aria-current={g.links.some((l) => l.href === path) ? "true" : undefined}>{g.label}</summary>
+              <ul>
+                {g.links.map((l) => (
+                  <li><a href={l.href} aria-current={path === l.href ? "page" : undefined}>{l.label}</a></li>
+                ))}
+              </ul>
+            </details>
+          </li>
         ))}
       </ul>
     </nav>
@@ -56,5 +74,11 @@ const links = [
     <footer class="site-foot">
       Tovertoon is gratis en open source onder de MIT-licentie. <a href={`${base}/lettertypes.txt`}>Lettertypelicenties</a>
     </footer>
+    <script>
+      const menus = [...document.querySelectorAll("details.menu")];
+      menus.forEach((m) => m.addEventListener("toggle", () => { if (m.open) menus.forEach((o) => { if (o !== m) o.open = false; }); }));
+      document.addEventListener("click", (e) => { if (!(e.target as Element).closest("details.menu")) menus.forEach((m) => (m.open = false)); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") menus.forEach((m) => { if (m.open) { m.open = false; (m.querySelector("summary") as HTMLElement).focus(); } }); });
+    </script>
   </body>
 </html>

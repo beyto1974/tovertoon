@@ -1,8 +1,9 @@
 ---
 import Base from "../layouts/Base.astro";
 import "../styles/components.css";
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
-<Base title="Intervallen" description="Leer intervallen kennen: de afstand tussen twee noten. Uitleg, een speeltuin met geluid en oefeningen op de notenbalk en op gehoor.">
+<Base title="Intervallen" description="Leer intervallen kennen: de afstand tussen twee noten. Uitleg, een tabel met alle intervallen en een speeltuin met geluid.">
   <main>
     <header>
       <h1>Intervallen</h1>
@@ -47,37 +48,16 @@ import "../styles/components.css";
       <p id="pname" class="big" aria-live="polite"></p>
     </section>
 
-    <section class="box" aria-labelledby="h-oef">
-      <h2 id="h-oef">Oefenen</h2>
-      <div class="bar">
-        <div class="grp"><span class="lab">Oefening</span><div class="seg" id="omode" role="group" aria-label="Oefening">
-          <button type="button" data-v="staff">Op de balk</button><button type="button" data-v="ear">Op gehoor</button><button type="button" data-v="dictee">Dictee</button></div></div>
-        <div class="grp"><span class="lab">Moeilijkheid</span><div class="seg" id="olevel" role="group" aria-label="Moeilijkheid">
-          <button type="button" data-v="basic">Rein en groot</button><button type="button" data-v="all">Alle soorten</button></div></div>
-        <div class="grp"><span class="lab">Zwakke plekken</span><div class="seg" id="ofocus" role="group" aria-label="Vaker herhalen wat fout ging">
-          <button type="button" data-v="on">Vaker</button><button type="button" data-v="off">Uit</button><button type="button" data-v="reset">Wis</button></div></div>
-      </div>
-      <h3 id="oq"></h3>
-      <div class="staffwrap" id="osw"><svg id="ostaff" role="img" aria-label="Interval om te benoemen"></svg></div>
-      <button type="button" class="go sec" id="replay" hidden>▶ Nog eens horen</button>
-      <p class="muted" id="dhint" hidden>De onderste noot staat er al en klinkt. Luister naar het interval en klik op de balk waar de bovenste noot hoort. Kies zo nodig een ♭ of ♯. Met ▲ en ▼ verplaats je de noot stap voor stap.</p>
-      <div class="opts" id="oopts"></div>
-      <div class="bar" id="dict" hidden>
-        <div class="grp"><span class="lab">Voorteken</span><div class="seg" id="dacc" role="group" aria-label="Voorteken van de noot">
-          <button type="button" data-v="-1" aria-label="mol">♭</button><button type="button" data-v="0" aria-label="geen voorteken">♮</button><button type="button" data-v="1" aria-label="kruis">♯</button></div></div>
-        <div class="grp"><span class="lab">Noot</span><div class="seg" role="group" aria-label="Noot verplaatsen">
-          <button type="button" id="dup" aria-label="Noot hoger">▲</button><button type="button" id="ddown" aria-label="Noot lager">▼</button></div></div>
-        <button type="button" class="go" id="dcheck" disabled>Controleer</button>
-      </div>
-      <div class="fb" id="ofb" aria-live="polite"></div>
-      <div class="stats" id="ostats"></div>
+    <section class="box next" aria-label="Verder oefenen">
+      <h2>Nu oefenen</h2>
+      <p class="muted">Benoem een interval op de balk of op gehoor, of schrijf de bovenste noot zelf op. Intervallen die je vaak mist komen vaker terug.</p>
+      <div class="bar"><a class="go" href={`${base}/intervallen-oefenen`}>Intervallen oefenen</a></div>
     </section>
   </main>
 </Base>
 
 <style is:global>
   .big { font: 800 28px / 1.1 var(--display); min-height: 1.2em; text-align: center; }
-  #ostaff.pick { cursor: pointer; }
   #tbl tbody tr { cursor: pointer; }
   #tbl tbody tr:hover { background: var(--hover); }
   #tbl tbody tr.on { background: var(--sun); color: #1d1b3a; }
@@ -86,48 +66,11 @@ import "../styles/components.css";
 </style>
 
 <script>
-  import { $, LETTERS, SEMI, nm, bindNames, pitch, letterOf, octaveOf, midi, accText, playPitch, stopSound, staff, CLEFS, STAFF_BOTTOM, GAP, store, save, seg, rnd, shuffle, makeStats, feedback, markOptions, pitchName } from "../lib/music.js";
+  import { $, nm, bindNames, pitch, letterOf, accText, playPitch, stopSound, store, save, seg, pitchName } from "../lib/music.js";
+  import { IV, byId, upper, pair } from "../lib/intervals.js";
 
-  // Interval catalogue: size = number of letters spanned, semis = half tones.
-  const IV = [
-    { id: "p1", size: 1, semis: 0, name: "reine prime", short: "prime" },
-    { id: "k2", size: 2, semis: 1, name: "kleine secunde", short: "secunde" },
-    { id: "g2", size: 2, semis: 2, name: "grote secunde", short: "secunde" },
-    { id: "k3", size: 3, semis: 3, name: "kleine terts", short: "terts" },
-    { id: "g3", size: 3, semis: 4, name: "grote terts", short: "terts" },
-    { id: "r4", size: 4, semis: 5, name: "reine kwart", short: "kwart" },
-    { id: "o4", size: 4, semis: 6, name: "overmatige kwart", short: "kwart" },
-    { id: "v5", size: 5, semis: 6, name: "verminderde kwint", short: "kwint" },
-    { id: "r5", size: 5, semis: 7, name: "reine kwint", short: "kwint" },
-    { id: "k6", size: 6, semis: 8, name: "kleine sext", short: "sext" },
-    { id: "g6", size: 6, semis: 9, name: "grote sext", short: "sext" },
-    { id: "k7", size: 7, semis: 10, name: "kleine septiem", short: "septiem" },
-    { id: "g7", size: 7, semis: 11, name: "grote septiem", short: "septiem" },
-    { id: "r8", size: 8, semis: 12, name: "reine octaaf", short: "octaaf" },
-  ];
-  const BASIC = ["p1", "g2", "g3", "r4", "r5", "g6", "g7", "r8", "k3", "k6"];
-  const byId = Object.fromEntries(IV.map((i) => [i.id, i]));
-
-  /** Upper pitch for a lower pitch and an interval; null when it would need a double accidental. */
-  function upper(low, iv) {
-    const d = low.d + iv.size - 1;
-    const semisNatural = SEMI[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
-    const lowSemis = SEMI[((low.d % 7) + 7) % 7] + 12 * Math.floor(low.d / 7) + low.alter;
-    const alter = lowSemis + iv.semis - semisNatural;
-    if (Math.abs(alter) > 1) return null;
-    return { d, alter };
-  }
-  // ---- table ----
   const C4 = pitch("C", 4);
-  function pair(svg, low, high, o = {}) {
-    const st = staff(svg, { clef: "treble", width: 340 });
-    const gap = high.d - low.d;
-    const close = gap <= 1; // seconds and primes: the upper head moves to the right of the lower one
-    const lowAcc = 180 - 19;
-    st.note(low, 180, { stem: false, accX: lowAcc });
-    st.note(high, close ? 206 : 180, { stem: false, accX: close ? lowAcc - (low.alter ? 16 : 0) : undefined, noAcc: gap === 0 && !o.keepAcc });
-    return st;
-  }
+  // ---- table ----
   function tableRows() {
     const tb = $("tbl").querySelector("tbody");
     tb.innerHTML = "";
@@ -192,184 +135,13 @@ import "../styles/components.css";
   $("play").onclick = () => playground(true);
   seg($("pmode"), pmode, (v) => { pmode = v; save("iv-pmode", v); });
 
-  // ---- exercise ----
-  let omode = store("iv-omode", "staff", ["staff", "ear", "dictee"]);
-  let olevel = store("iv-olevel", "basic", ["basic", "all"]);
-  const stats = makeStats($("ostats"), "iv-best");
-  let q = null;
-  // Intervals you missed come up more often: weight 1 + 3 per open miss; a right answer pays one miss back.
-  let again = store("iv-focus", "on", ["on", "off"]) === "on";
-  let weak = {};
-  try { const w = JSON.parse(localStorage.getItem("iv-weak") || "{}"); if (w && typeof w === "object") weak = w; } catch (e) {}
-  function pickInterval() {
-    const ivs = pool();
-    if (!again) return ivs[rnd(ivs.length)];
-    const ws = ivs.map((iv) => 1 + 3 * (weak[iv.id] || 0));
-    let r = Math.random() * ws.reduce((a, b) => a + b, 0);
-    for (let i = 0; i < ivs.length; i++) { r -= ws[i]; if (r < 0) return ivs[i]; }
-    return ivs[ivs.length - 1];
-  }
-  /** "Wis" does nothing while no misses are recorded, so it is disabled then. */
-  function syncWipe() {
-    const b = document.querySelector('#ofocus [data-v="reset"]');
-    if (b) (b as HTMLButtonElement).disabled = !Object.keys(weak).length;
-  }
-  function track(id, ok) {
-    const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
-    if (n) weak[id] = n; else delete weak[id];
-    save("iv-weak", JSON.stringify(weak));
-    syncWipe();
-  }
-  // By ear the overmatige kwart and verminderde kwint cannot be told apart, so they become one "tritonus".
-  const label = (iv) => (omode !== "staff" && iv.id === "o4" ? "tritonus" : iv.name);
-  function pool() {
-    const all = olevel === "basic" ? BASIC.map((id) => byId[id]) : IV;
-    return omode !== "staff" ? all.filter((iv) => iv.id !== "v5") : all;
-  }
-  function make() {
-    for (let t = 0; t < 200; t++) {
-      const iv = pickInterval();
-      if (omode !== "staff" && iv.id === "p1") continue;
-      // low note: any natural white key between G3 and G5-ish so both notes fit the treble staff nicely
-      const low = { d: pitch("C", 4).d + rnd(8) - 1, alter: 0 };
-      const up = upper(low, iv);
-      if (!up) continue;
-      if (up.d > pitch("A", 5).d) continue;
-      if (q && q.iv.id === iv.id && q.low.d === low.d) continue;
-      return { iv, low, up, done: false };
-    }
-  }
-  function options() {
-    const correct = q.iv;
-    const same = IV.filter((i) => i.id !== correct.id && pool().some((p) => p.id === i.id));
-    // distractors close in size, then any other
-    same.sort((a, b) => Math.abs(a.semis - correct.semis) - Math.abs(b.semis - correct.semis) || Math.random() - 0.5);
-    return shuffle([correct, ...same.slice(0, 3)]);
-  }
-  function render() {
-    const dictee = omode === "dictee";
-    $("oq").textContent = omode === "staff" ? "Welk interval zie je?" : omode === "ear" ? "Welk interval hoor je?" : "Schrijf de bovenste noot op";
-    $("osw").hidden = omode === "ear" && !q.done;
-    $("replay").hidden = omode === "staff";
-    $("oopts").hidden = dictee;
-    $("dict").hidden = !dictee;
-    $("dhint").hidden = !dictee;
-    $("ostaff").classList.toggle("pick", dictee && !q.done);
-    if (dictee) {
-      if (!q.placed && !q.done) setAcc(0);
-      dictDraw();
-      $("dcheck").disabled = !q.placed || q.done;
-      $("dup").disabled = $("ddown").disabled = q.done;
-    } else if (!$("osw").hidden) pair($("ostaff"), q.low, q.up);
-    const o = $("oopts");
-    o.innerHTML = "";
-    q.opts = q.opts || options();
-    q.opts.forEach((iv) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.dataset.v = iv.id;
-      b.textContent = label(iv);
-      b.onclick = () => answer(iv.id);
-      o.append(b);
-    });
-    $("ofb").innerHTML = "";
-    if (q.done) result();
-  }
-  // ---- dictee: write the upper note on the staff ----
-  const full = (p) => `${pitchName(p)}${octaveOf(p)}`;
-  let dacc = 0;
-  function setAcc(v) {
-    dacc = v;
-    $("dacc").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.v) === v)));
-  }
-  function dictDraw() {
-    if (q.placed) pair($("ostaff"), q.low, q.placed, { keepAcc: true });
-    else staff($("ostaff"), { clef: "treble", width: 340 }).note(q.low, 180, { stem: false, accX: 161 });
-  }
-  const D_MIN = pitch("A", 3).d, D_MAX = pitch("D", 6).d;
-  function place(d) {
-    if (omode !== "dictee" || !q || q.done) return;
-    q.placed = { d: Math.max(D_MIN, Math.min(D_MAX, d)), alter: dacc };
-    dictDraw();
-    $("dcheck").disabled = false;
-  }
-  // A click on the staff becomes the nearest line or space (every step is half a line gap).
-  $("ostaff").onclick = (e) => {
-    if (omode !== "dictee" || !q || q.done) return;
-    const svg = $("ostaff"), pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const y = pt.matrixTransform(svg.getScreenCTM().inverse()).y;
-    place(Math.round(CLEFS.treble.d0 + (STAFF_BOTTOM - y) / (GAP / 2)));
-  };
-  $("dup").onclick = () => place(q.placed ? q.placed.d + 1 : q.low.d + 1);
-  $("ddown").onclick = () => place(q.placed ? q.placed.d - 1 : q.low.d - 1);
-  seg($("dacc"), "0", (v) => {
-    setAcc(Number(v));
-    if (q && q.placed && !q.done) place(q.placed.d);
-  });
-  $("dcheck").onclick = () => {
-    if (!q.placed || q.done) return;
-    q.done = true;
-    const ok = midi(q.placed) === midi(q.up);
-    track(q.iv.id, ok);
-    stats.record(ok);
-    $("ostaff").classList.remove("pick");
-    $("dcheck").disabled = $("dup").disabled = $("ddown").disabled = true;
-    dicteeResult(ok);
-  };
-  function dicteeResult(ok) {
-    const exact = q.placed.d === q.up.d && q.placed.alter === q.up.alter;
-    pair($("ostaff"), q.low, q.up);
-    let text = explain();
-    if (!ok) text = `Jij schreef ${full(q.placed)}, het was ${full(q.up)}. ${text}`;
-    else if (!exact) text = `Jouw ${full(q.placed)} klinkt hetzelfde, maar bij dit interval schrijf je ${full(q.up)}. ${text}`;
-    feedback($("ofb"), ok, ok ? "Goed gehoord!" : "Niet helemaal.", text, next);
-  }
-  function hear() { stopSound(); playPitch(q.low, 0, 1.1); playPitch(q.up, 0.7, 1.4); }
-  function explain() {
-    const iv = q.iv;
-    const letters = iv.size;
-    const tail = omode !== "staff" && iv.id === "o4" ? "een tritonus (overmatige kwart of verminderde kwint, ze klinken hetzelfde)" : `een ${iv.name}`;
-    return `${pitchName(q.low)} naar ${pitchName(q.up)} overspant ${letters} letters en ${iv.semis} halve ${iv.semis === 1 ? "toon" : "tonen"}: dat is ${tail}.`;
-  }
-  function result() {
-    if (omode === "dictee") return dicteeResult(midi(q.placed) === midi(q.up));
-    markOptions($("oopts"), q.iv.id, q.picked);
-    const ok = q.picked === q.iv.id;
-    feedback($("ofb"), ok, ok ? "Goed zo!" : `Het was een ${label(q.iv)}.`, explain(), next);
-    if (omode === "ear") { $("osw").hidden = false; pair($("ostaff"), q.low, q.up); }
-  }
-  function answer(id) {
-    if (q.done || omode === "dictee") return; // dictee is answered with the Controleer button
-    q.done = true;
-    q.picked = id;
-    track(q.iv.id, id === q.iv.id);
-    stats.record(id === q.iv.id);
-    result();
-  }
-  function next() { q = make(); render(); hear(); }
-  $("replay").onclick = hear;
-  seg($("omode"), omode, (v) => { omode = v; save("iv-omode", v); q = make(); render(); hear(); });
-  seg($("olevel"), olevel, (v) => { olevel = v; save("iv-olevel", v); q = make(); render(); hear(); });
-  const ofocus = $("ofocus");
-  seg(ofocus, again ? "on" : "off", (v) => { again = v === "on"; save("iv-focus", v); });
-  // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
-  ofocus.querySelector('[data-v="reset"]').onclick = () => {
-    weak = {};
-    syncWipe();
-    try { localStorage.removeItem("iv-weak"); } catch (e) {}
-  };
-  ofocus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
-  syncWipe();
 
-  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); render(); });
+  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); });
   function showRowQuiet() {
     $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === rowSel.id));
     const up = upper(C4, rowSel);
     if (up) pair($("tstaff"), C4, up);
   }
   fillSelects(); tableRows(); showRowQuiet(); playground(false);
-  q = make(); render();
-  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => { showRowQuiet(); playground(false); if (!$("osw").hidden) pair($("ostaff"), q.low, q.up); }).catch(() => {});
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => { showRowQuiet(); playground(false); }).catch(() => {});
 </script>
