@@ -2,16 +2,20 @@
 import Base from "../layouts/Base.astro";
 import "../styles/components.css";
 ---
-<Base title="Ritme volgorde" description="Vier ritmes van twee tellen staan op het scherm. Hoor de muziek en zet ze in de juiste volgorde." wrap="720px">
+<Base title="Ritme volgorde" description="Vier ritmes van één maat staan op het scherm, in 2/4, 3/4 of 6/8. Hoor de muziek en zet ze in de juiste volgorde." wrap="720px">
 <main>
   <header>
     <h1>Ritme volgorde</h1>
-    <p class="muted">Vier korte ritmes van elk twee tellen: A, B, C en D. Je hoort ze achter elkaar in een verborgen volgorde. Tik de ritmes aan in de volgorde waarin je ze hoort.</p>
+    <p class="muted">Vier korte ritmes van elk één maat: A, B, C en D. Je hoort ze achter elkaar in een verborgen volgorde. Tik de ritmes aan in de volgorde waarin je ze hoort.</p>
   </header>
 
   <details class="cfgbox" id="cfg" open>
   <summary class="cfg">Instellingen</summary>
   <section class="box bar" aria-label="Instellingen">
+    <div class="grp"><span class="lab">Maat</span>
+      <div class="seg" id="meter" role="group" aria-label="Maatsoort">
+        <button type="button" data-v="2/4">2/4</button><button type="button" data-v="3/4">3/4</button><button type="button" data-v="6/8">6/8</button>
+      </div></div>
     <div class="grp"><span class="lab">Niveau</span>
       <div class="seg" id="level" role="group" aria-label="Niveau">
         <button type="button" data-v="easy">Makkelijk</button><button type="button" data-v="mid">Gemiddeld</button><button type="button" data-v="hard">Moeilijk</button>
@@ -21,7 +25,7 @@ import "../styles/components.css";
         <button type="button" data-v="64">Langzaam</button><button type="button" data-v="84">Normaal</button><button type="button" data-v="108">Snel</button>
       </div></div>
     <div class="grp"><span class="lab">Inteller</span>
-      <label><input type="checkbox" id="countin" checked> Eerst vier tellen</label></div>
+      <label><input type="checkbox" id="countin" checked> Eerst een inteller</label></div>
     <div class="grp"><span class="lab">Zwakke plekken</span>
       <div class="seg" id="focus" role="group" aria-label="Vaker herhalen wat fout ging">
         <button type="button" data-v="on">Vaker</button><button type="button" data-v="off">Uit</button><button type="button" data-v="reset">Wis</button>
@@ -31,7 +35,7 @@ import "../styles/components.css";
 
   <section class="box" aria-live="polite">
     <h2 id="qt">In welke volgorde hoor je de ritmes?</h2>
-    <p class="muted" id="hint">Luister, en tik dan de ritmes aan: eerst het eerste dat je hoorde, dan het tweede, enzovoort.</p>
+    <p class="muted" id="hint"></p>
     <div class="bar">
       <button type="button" class="go" id="listen">▶ Beluister</button>
     </div>
@@ -62,6 +66,7 @@ import "../styles/components.css";
   .slots button.hot, .cards button.hot { outline: 4px solid var(--violet); outline-offset: 2px; }
   .slots button:disabled { cursor: default; }
   .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 520px; }
+  .cards.wide { grid-template-columns: 1fr; } /* a 3/4 or 6/8 bar needs more room than half a card */
   #actions[hidden] { display: none; }
   .cards button { position: relative; padding: 6px 6px 2px; background: var(--card); border: 2px solid var(--ink); border-radius: 16px; cursor: pointer; transition: background 0.15s, transform 0.1s; color: var(--ink); display: block; width: 100%; }
   .cards button svg { display: block; width: 100%; height: auto; pointer-events: none; }
@@ -103,23 +108,12 @@ import "../styles/components.css";
 
 <script>
   import { $, store, save, seg, rnd, shuffle, makeStats, feedback, audio, stopSound } from "../lib/music.js";
-  import { drawRhythm, playLine } from "../lib/rhythm.js";
+  import { drawRhythm, playLine, METERS, cellPool, toEvents } from "../lib/rhythm.js";
 
-  const CELL = 8; // two beats, in sixteenths
-  // A cell is a list of durations; a negative number is a rest of that length.
-  const SETS = {
-    easy: [[4, 4], [2, 2, 4], [4, 2, 2], [2, 2, 2, 2], [8]],
-    mid: [[4, -4], [-4, 4], [6, 2], [2, 2, -4], [4, 2, -2], [2, -2, 4], [2, 4, 2]],
-    hard: [[1, 1, 1, 1, 4], [4, 1, 1, 1, 1], [2, 1, 1, 4], [1, 1, 2, 4], [3, 1, 4], [4, 3, 1], [1, 1, 1, 1, 1, 1, 1, 1], [2, 2, 1, 1, 2], [1, 1, 2, 2, 2], [4, 1, 1, 2], [3, 1, 2, 2], [-2, 2, 4], [2, 1, 1, 2, 2]],
-  };
-  const POOLS = { easy: SETS.easy, mid: [...SETS.easy, ...SETS.mid], hard: [...SETS.mid, ...SETS.hard] };
-  const toEvents = (cell) => {
-    let on = 0;
-    return cell.map((d) => { const e = { on, dur: Math.abs(d), rest: d < 0 }; on += e.dur; return e; });
-  };
-  const idOf = (cell) => cell.join(",");
+  const idOf = (cell) => meter + ":" + cell.join(",");
 
   let level = store("rv-level", "easy", ["easy", "mid", "hard"]);
+  let meter = store("rv-meter", "2/4", ["2/4", "3/4", "6/8"]);
   let tempo = Number(store("rv-tempo", "84", ["64", "84", "108"]));
   let again = store("rv-focus", "on", ["on", "off"]) === "on";
   let weak = {};
@@ -131,14 +125,20 @@ import "../styles/components.css";
   let timers: number[] = [];
 
   // Cells you mixed up come up more often: weight 1 + 3 per open miss; a right answer pays one miss back.
+  /** "Wis" does nothing while no misses are recorded, so it is disabled then. */
+  function syncWipe() {
+    const b = document.querySelector('#focus [data-v="reset"]');
+    if (b) (b as HTMLButtonElement).disabled = !Object.keys(weak).length;
+  }
   function track(id, ok) {
     const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
     if (n) weak[id] = n; else delete weak[id];
     save("rv-weak", JSON.stringify(weak));
+    syncWipe();
   }
   /** Four different cells. Hard mode likes cells that start alike, so the ear has to follow them to the end. */
   function pickCells() {
-    const pool = POOLS[level].slice();
+    const pool = cellPool(meter, level).slice();
     const out = [];
     while (out.length < 4) {
       const ws = pool.map((c) => {
@@ -159,9 +159,12 @@ import "../styles/components.css";
       cells = pickCells();
       order = shuffle([0, 1, 2, 3]);
     } while (order.every((v, i) => v === i) || (prev && cells.map(idOf).join("|") + ">" + order.join("") === prev));
-    return { cells, order, picked: [], done: false };
+    return { cells, order, meter, picked: [], done: false };
   }
-  const lineOf = (order) => order.flatMap((ci, k) => toEvents(q.cells[ci]).map((e) => ({ ...e, on: e.on + k * CELL })));
+  const M = () => METERS[q.meter];
+  const lineOf = (order) => order.flatMap((ci, k) => toEvents(q.cells[ci], k * M().total));
+  const bpm = () => tempo * M().tempo;
+  const popts = () => ({ beatLen: M().beatLen, ticks: M().beats });
 
   function clearHot() {
     timers.forEach(clearTimeout);
@@ -171,23 +174,26 @@ import "../styles/components.css";
   function play(order, hot) {
     audio();
     clearHot();
-    const secs = playLine(lineOf(order), tempo, 8, ($("countin") as HTMLInputElement).checked);
+    const m = M();
+    const secs = playLine(lineOf(order), bpm(), 4 * m.beats, ($("countin") as HTMLInputElement).checked, popts());
     if (!hot || !secs) return;
-    const beat = 60 / tempo, t0 = 0.06 + (($("countin") as HTMLInputElement).checked ? 4 * beat : 0);
+    const beat = 60 / bpm(), t0 = 0.06 + (($("countin") as HTMLInputElement).checked ? m.beats * beat : 0);
     order.forEach((ci, k) => {
       timers.push(window.setTimeout(() => {
         document.querySelectorAll(".hot").forEach((n) => n.classList.remove("hot"));
         $("cards").children[ci].classList.add("hot");
         $("slots").children[k].classList.add("hot");
-      }, (t0 + k * 2 * beat) * 1000));
+      }, (t0 + k * m.beats * beat) * 1000));
     });
-    timers.push(window.setTimeout(clearHot, (t0 + 8 * beat) * 1000));
+    timers.push(window.setTimeout(clearHot, (t0 + 4 * m.beats * beat) * 1000));
   }
 
   function render() {
     const cards = $("cards"), slots = $("slots");
     cards.innerHTML = "";
     cards.classList.toggle("done", q.done);
+    cards.classList.toggle("wide", M().total > 8);
+    $("hint").textContent = `Maat: ${q.meter}. Luister, en tik dan de ritmes aan: eerst het eerste dat je hoorde, dan het tweede, enzovoort.`;
     ($("actions") as HTMLElement).hidden = q.done;
     slots.innerHTML = "";
     q.cells.forEach((cell, i) => {
@@ -195,13 +201,13 @@ import "../styles/components.css";
       b.type = "button";
       b.setAttribute("aria-label", "Ritme " + L[i]);
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      drawRhythm(svg, toEvents(cell), { W: 200, total: CELL });
+      drawRhythm(svg, toEvents(cell), { W: M().total > 8 ? 320 : 200, total: M().total, beat: M().beatLen });
       b.append(svg);
       b.insertAdjacentHTML("afterbegin", `<b>${L[i]}</b>`);
       b.classList.toggle("used", !q.done && q.picked.includes(i));
       b.disabled = !q.done && q.picked.includes(i);
       b.onclick = () => {
-        if (q.done) { audio(); clearHot(); playLine(toEvents(cell), tempo, 2, false); return; } // after the answer a card plays alone
+        if (q.done) { audio(); clearHot(); playLine(toEvents(cell), bpm(), M().beats, false, popts()); return; } // after the answer a card plays alone
         if (q.picked.length >= 4 || q.picked.includes(i)) return;
         q.picked.push(i); stopSound(); clearHot(); render();
       };
@@ -262,6 +268,7 @@ import "../styles/components.css";
   $("listen").onclick = () => play(q.order, q.done);
   $("check").onclick = check;
   $("clear").onclick = () => { q.picked = []; render(); };
+  seg($("meter"), meter, (v) => { meter = v; save("rv-meter", v); q = make(); render(); play(q.order, false); });
   seg($("level"), level, (v) => { level = v; save("rv-level", v); q = make(); render(); play(q.order, false); });
   seg($("tempo"), String(tempo), (v) => { tempo = Number(v); save("rv-tempo", v); play(q.order, q.done); });
   ($("countin") as HTMLInputElement).onchange = (e) => save("rv-countin", (e.target as HTMLInputElement).checked ? "1" : "0");
@@ -270,9 +277,11 @@ import "../styles/components.css";
   // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
   focus.querySelector('[data-v="reset"]').onclick = () => {
     weak = {};
+    syncWipe();
     try { localStorage.removeItem("rv-weak"); } catch (e) {}
   };
   focus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
+  syncWipe();
   try { if (matchMedia("(max-width:600px)").matches) ($("cfg") as HTMLDetailsElement).open = false; } catch (e) {}
   q = make();
   render();

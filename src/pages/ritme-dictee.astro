@@ -1,0 +1,259 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Ritme dictee" description="Luister naar een maat en schrijf het ritme op met noten, rusten en bindbogen, in 2/4, 3/4, 4/4 of 6/8." wrap="720px">
+<main>
+  <header>
+    <h1>Ritme dictee</h1>
+    <p class="muted">Luister naar één maat en schrijf het ritme op. Kies noten en rusten tot de maat vol is. Er is geen toonhoogte: alleen hoe lang elke noot duurt en waar de stiltes vallen.</p>
+  </header>
+
+  <details class="cfgbox" id="cfg" open>
+  <summary class="cfg">Instellingen</summary>
+  <section class="box bar" aria-label="Instellingen">
+    <div class="grp"><span class="lab">Maat</span>
+      <div class="seg" id="meter" role="group" aria-label="Maatsoort">
+        <button type="button" data-v="2/4">2/4</button><button type="button" data-v="3/4">3/4</button><button type="button" data-v="4/4">4/4</button><button type="button" data-v="6/8">6/8</button>
+      </div></div>
+    <div class="grp"><span class="lab">Niveau</span>
+      <div class="seg" id="level" role="group" aria-label="Niveau">
+        <button type="button" data-v="easy">Makkelijk</button><button type="button" data-v="mid">Gemiddeld</button><button type="button" data-v="hard">Moeilijk</button>
+      </div></div>
+    <div class="grp"><span class="lab">Tempo</span>
+      <div class="seg" id="tempo" role="group" aria-label="Tempo">
+        <button type="button" data-v="64">Langzaam</button><button type="button" data-v="84">Normaal</button><button type="button" data-v="108">Snel</button>
+      </div></div>
+    <div class="grp"><span class="lab">Inteller</span>
+      <label><input type="checkbox" id="countin" checked> Eerst een inteller</label></div>
+  </section>
+  </details>
+
+  <section class="box" aria-live="polite">
+    <h2 id="qt">Schrijf het ritme op</h2>
+    <p class="muted" id="hint"></p>
+    <div class="bar">
+      <button type="button" class="go" id="listen">▶ Luister</button>
+      <button type="button" class="go sec" id="own" disabled>▶ Mijn ritme</button>
+    </div>
+    <div class="rwrap"><svg id="mine" role="img" aria-label="Maat waarop je het ritme schrijft"></svg></div>
+
+    <div id="pal">
+      <div class="lab">Noten</div>
+      <div class="pals" id="palnotes"></div>
+      <div class="lab">Rusten</div>
+      <div class="pals" id="palrests"></div>
+      <div class="pals">
+        <button type="button" class="pill" id="tie" aria-pressed="false">⌒ Bind aan volgende noot</button>
+        <button type="button" class="pill" id="undo">Wis laatste</button>
+        <button type="button" class="pill" id="clear">Opnieuw</button>
+      </div>
+    </div>
+    <p class="muted" id="sel" aria-live="polite"></p>
+    <div class="bar" id="actions">
+      <button type="button" class="go" id="check" disabled>Controleer</button>
+    </div>
+    <div id="ansbox" hidden>
+      <h3>Zo hoorde het</h3>
+      <div class="rwrap"><svg id="ans" role="img" aria-label="Het juiste ritme"></svg></div>
+    </div>
+    <div class="fb" id="fb"></div>
+  </section>
+
+  <section class="stats" id="stats" aria-label="Score"></section>
+</main>
+</Base>
+
+<style is:global>
+  .box.bar { flex-direction: row; } /* .box stacks in a column; the settings want to sit side by side */
+  summary.cfg { display: none; }
+  .rwrap svg { display: block; width: 100%; max-width: 560px; height: auto; }
+  .slot { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4; }
+  .slot.on { stroke: var(--violet); stroke-dasharray: none; stroke-width: 3; }
+  .band { opacity: 0.22; }
+  .band.good { fill: var(--good); }
+  .band.bad { fill: var(--bad); }
+  .pals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .pals .pill:disabled { opacity: 0.4; cursor: default; }
+  #pal[hidden], #ansbox[hidden], #actions[hidden] { display: none; }
+  #ansbox { display: flex; flex-direction: column; gap: 6px; }
+  .compare { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) {
+    body { padding-block: 6px; }
+    .site-nav { margin-bottom: 6px; }
+    .site-nav ul, .site-foot { display: none; }
+    main { gap: 8px; }
+    header p, #hint { display: none; }
+    h1 { font-size: 22px; margin: 0; }
+    details.cfgbox > summary.cfg { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font: 600 14px var(--body); list-style: none; padding: 8px 14px; background: var(--card); border: 2px solid var(--ink); border-radius: 14px; }
+    summary.cfg::-webkit-details-marker { display: none; }
+    summary.cfg::after { content: "▾"; }
+    details[open] > summary.cfg::after { content: "▴"; }
+    details.cfgbox[open] > summary.cfg { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    details.cfgbox > .bar { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; gap: 8px 14px; }
+    .box { border-radius: 16px; padding: 12px; gap: 8px; }
+    h2 { font-size: 18px; margin: 0; }
+    .go { font-size: 16px; padding: 7px 18px; }
+    .pill { padding: 8px 12px; font-size: 14px; }
+    .fb { gap: 6px; min-height: 0; }
+    .fb .msg { font-size: 18px; }
+    .fb p { font-size: 13px; line-height: 1.3; }
+    .stats { flex-wrap: nowrap; gap: 8px; }
+    .stat { flex: 1; min-width: 0; padding: 2px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+    .stat small { display: inline; font-size: 10px; }
+    .stat b { font-size: 16px; }
+  }
+</style>
+
+<script>
+  import { $, store, save, seg, makeStats, feedback, audio, stopSound } from "../lib/music.js";
+  import { drawRhythm, playLine, METERS, randomBar, sounds } from "../lib/rhythm.js";
+
+  // [length in sixteenths, button text, spoken name]
+  const NOTE_VALUES = [[16, "hele", "hele noot"], [12, "halve.", "halve noot met punt"], [8, "halve", "halve noot"], [6, "kwart.", "kwartnoot met punt"], [4, "kwart", "kwartnoot"], [3, "achtste.", "achtste met punt"], [2, "achtste", "achtste"], [1, "zestiende", "zestiende"]];
+  const REST_VALUES = [[16, "hele rust", "hele rust"], [12, "halve rust.", "halve rust met punt"], [8, "halve rust", "halve rust"], [6, "kwartrust.", "kwartrust met punt"], [4, "kwartrust", "kwartrust"], [2, "achtste rust", "achtste rust"], [1, "zestiende rust", "zestiende rust"]];
+  const NAMES = Object.fromEntries(NOTE_VALUES.map(([d, , n]) => [d, n]));
+  const RNAMES = Object.fromEntries(REST_VALUES.map(([d, , n]) => [d, n]));
+  const HARD_ONLY = [3, 1]; // dotted eighth and sixteenth only show up on the hard level
+
+  let meter = store("rd-meter", "4/4", Object.keys(METERS));
+  let level = store("rd-level", "easy", ["easy", "mid", "hard"]);
+  let tempo = Number(store("rd-tempo", "84", ["64", "84", "108"]));
+  try { if (localStorage.getItem("rd-countin") === "0") ($("countin") as HTMLInputElement).checked = false; } catch (e) {}
+  const stats = makeStats($("stats"), "rd-best");
+  let q: any = null;
+
+  const M = () => METERS[q.meter];
+  const used = (evs) => evs.reduce((a, e) => a + e.dur, 0);
+  const key = (evs) => sounds(evs).map((s) => `${s.on}:${s.dur}`).join(" ");
+  const notation = (evs) => evs.map((e) => `${e.dur}${e.rest ? "r" : ""}${e.tie ? "t" : ""}`).join(",");
+  const describe = (evs) => evs.map((e, i) => (i === 0 ? "" : evs[i - 1].tie && !e.rest ? " ⌒ " : ", ") + (e.rest ? RNAMES[e.dur] : NAMES[e.dur])).join("");
+  /** Tied notes merged, so the ear hears one long note. */
+  const heard = (evs) => sounds(evs).map((s) => ({ on: s.on, dur: s.dur, rest: false }));
+  /** Length as a count with fractions ("2½"): quarters in most meters, eighths in 6/8. */
+  function counted(n, m) {
+    const v = n / (m.den === 8 ? 2 : 4), whole = Math.floor(v), f = ["", "¼", "½", "¾"][Math.round((v - whole) * 4)];
+    return whole || !f ? String(whole) + f : f;
+  }
+
+  function make() {
+    let ev, tries = 0;
+    do { ev = randomBar(meter, level); } while (q && key(ev) === key(q.ev) && ++tries < 50);
+    return { meter, ev, u: [], done: false, bands: null };
+  }
+
+  function redraw() {
+    const m = M();
+    const labels = [];
+    for (let on = 0; on < m.total; on += m.beatLen) labels.push({ on, text: String(m.den === 8 ? on / 2 + 1 : on / m.beatLen + 1) });
+    const W = 100 + m.total * 20, u = used(q.u);
+    drawRhythm($("mine") as unknown as SVGElement, q.u, { W, time: [m.num, m.den], total: m.total, beat: m.beatLen, labels, next: q.done ? null : u, bands: q.bands });
+    const pal = !q.done;
+    $("pal").hidden = !pal;
+    $("actions").hidden = q.done;
+    $("ansbox").hidden = !q.done;
+    if (pal) {
+      const rem = m.total - u, last = q.u[q.u.length - 1];
+      document.querySelectorAll("#palnotes button, #palrests button").forEach((b: any) => {
+        const d = Number(b.dataset.d);
+        b.hidden = d > m.total || (level !== "hard" && HARD_ONLY.includes(d));
+        b.disabled = d > rem || (b.dataset.rest === "1" && !!(last && last.tie));
+      });
+      ($("tie") as HTMLButtonElement).disabled = !last || last.rest || rem === 0;
+      $("tie").setAttribute("aria-pressed", String(!!(last && last.tie)));
+      ($("undo") as HTMLButtonElement).disabled = ($("clear") as HTMLButtonElement).disabled = q.u.length === 0;
+    }
+    ($("check") as HTMLButtonElement).disabled = q.done || u !== m.total;
+    ($("own") as HTMLButtonElement).disabled = !q.u.some((e) => !e.rest);
+    $("sel").textContent = q.done ? "" : u === m.total ? "De maat is vol. Controleer je antwoord." : `Maat: ${counted(u, m)} van ${m.den === 8 ? m.total / 2 + " achtsten" : m.total / 4 + " tellen"}. Voeg noten en rusten toe tot de maat vol is.`;
+    $("hint").textContent = `Maat: ${q.meter}. Luister zo vaak je wilt. De cijfers onder de balk zijn de tellen.`;
+  }
+
+  function play(evs) {
+    audio();
+    const m = M();
+    playLine(evs, tempo * m.tempo, m.beats, ($("countin") as HTMLInputElement).checked, { beatLen: m.beatLen, ticks: m.beats });
+  }
+
+  function addEvent(dur, rest) {
+    if (q.done) return;
+    const m = M(), rem = m.total - used(q.u), last = q.u[q.u.length - 1];
+    if (dur > rem || (rest && last && last.tie)) return;
+    q.u.push({ on: used(q.u), dur, rest, tie: false });
+    redraw();
+  }
+  function palette(host, values, rest) {
+    values.forEach(([dur, text, aria]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill";
+      b.textContent = text;
+      b.dataset.d = String(dur);
+      b.dataset.rest = rest ? "1" : "0";
+      b.setAttribute("aria-label", aria);
+      b.onclick = () => addEvent(dur, rest);
+      host.append(b);
+    });
+  }
+  palette($("palnotes"), NOTE_VALUES, false);
+  palette($("palrests"), REST_VALUES, true);
+  $("tie").onclick = () => {
+    const last = q.u[q.u.length - 1];
+    if (!last || last.rest || q.done) return;
+    last.tie = !last.tie;
+    redraw();
+  };
+  $("undo").onclick = () => { q.u.pop(); redraw(); };
+  $("clear").onclick = () => { q.u = []; redraw(); };
+
+  function check() {
+    const m = M();
+    if (q.done || used(q.u) !== m.total) return;
+    q.done = true;
+    stopSound();
+    const want = new Set(sounds(q.ev).map((s) => `${s.on}:${s.dur}`));
+    const bands = {};
+    let good = 0;
+    const mine = sounds(q.u);
+    mine.forEach((s) => { const ok = want.has(`${s.on}:${s.dur}`); if (ok) good++; bands[s.first] = ok ? "good" : "bad"; });
+    q.bands = bands;
+    const ok = key(q.u) === key(q.ev);
+    stats.record(ok);
+    drawRhythm($("ans") as unknown as SVGElement, q.ev, { W: 100 + m.total * 20, time: [m.num, m.den], total: m.total, beat: m.beatLen });
+    redraw();
+    const total = want.size;
+    let head = ok ? "Goed zo!" : good ? `${good} van ${total} noten staan goed.` : "Dit was het ritme.";
+    let more = `Zo hoorde het: ${describe(q.ev)}.`;
+    if (ok && notation(q.u) !== notation(q.ev)) more += " Jij schreef het anders op, maar het klinkt hetzelfde. Dat is ook goed.";
+    feedback($("fb"), ok, head, more, () => { fresh(); play(q.ev); });
+    const cmp = document.createElement("div");
+    cmp.className = "compare";
+    const mk = (label, evs) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "go sec";
+      b.textContent = label;
+      b.onclick = () => play(evs);
+      cmp.append(b);
+    };
+    mk("▶ Juiste ritme", q.ev);
+    if (!ok) mk("▶ Jouw ritme", heard(q.u));
+    $("fb").insertBefore(cmp, $("fb").querySelector(".go"));
+  }
+
+  function fresh() {
+    q = make();
+    $("fb").innerHTML = "";
+    redraw();
+  }
+  $("listen").onclick = () => play(q.ev);
+  $("own").onclick = () => play(heard(q.u));
+  $("check").onclick = check;
+  seg($("meter"), meter, (v) => { meter = v; save("rd-meter", v); fresh(); play(q.ev); });
+  seg($("level"), level, (v) => { level = v; save("rd-level", v); fresh(); play(q.ev); });
+  seg($("tempo"), String(tempo), (v) => { tempo = Number(v); save("rd-tempo", v); play(q.ev); });
+  ($("countin") as HTMLInputElement).onchange = (e) => save("rd-countin", (e.target as HTMLInputElement).checked ? "1" : "0");
+  try { if (matchMedia("(max-width:600px)").matches) ($("cfg") as HTMLDetailsElement).open = false; } catch (e) {}
+  fresh();
+  (window as any).__rd = () => q;
+</script>
