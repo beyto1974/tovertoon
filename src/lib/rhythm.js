@@ -159,20 +159,22 @@ export function distractors(events, level, n = 3) {
 // The rhythm is played with the same soft piano tone as the scales: one pitch (G4) for the notes,
 // a quiet low C for the pulse and short high ticks for the count-in.
 const NOTE = 67, PULSE = 48, TICK = 91, TICK_FIRST = 96;
-/** Plays one bar (optionally after a count-in bar). Returns the duration in seconds. */
-export function playBar(events, bpm, countIn) {
+/** Plays events over `beats` beats (optionally after a four-beat count-in). Returns the duration in seconds. */
+export function playLine(events, bpm, beats, countIn) {
   if (!audio()) return 0;
-  stopSound(); // a new bar cuts the previous one instead of playing over it
+  stopSound(); // a new line cuts the previous one instead of playing over it
   const beat = 60 / bpm, u = beat / 4;
   const t0 = 0.06 + (countIn ? 4 * beat : 0);
   if (countIn) for (let i = 0; i < 4; i++) playMidi(i === 0 ? TICK_FIRST : TICK, 0.06 + i * beat, 0.15, 0.12);
-  for (let i = 0; i < 4; i++) playMidi(PULSE, t0 + i * beat, 0.3, 0.14);
+  for (let i = 0; i < beats; i++) playMidi(PULSE, t0 + i * beat, 0.3, 0.14);
   events.forEach((e) => {
     // A piano tone fades by itself, so longer notes ring a little longer without being held at full volume.
     if (!e.rest) playMidi(NOTE, t0 + e.on * u, Math.min(1.5, Math.max(0.3, e.dur * u * 1.4)), 0.45);
   });
-  return (countIn ? 8 : 4) * beat;
+  return (countIn ? 4 + beats : beats) * beat;
 }
+/** Plays one 4/4 bar. */
+export const playBar = (events, bpm, countIn) => playLine(events, bpm, 4, countIn);
 
 /** Counting syllables for a position inside a 4/4 bar. */
 export function syllable(on) {

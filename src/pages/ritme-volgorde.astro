@@ -1,0 +1,279 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+---
+<Base title="Ritme volgorde" description="Vier ritmes van twee tellen staan op het scherm. Hoor de muziek en zet ze in de juiste volgorde." wrap="720px">
+<main>
+  <header>
+    <h1>Ritme volgorde</h1>
+    <p class="muted">Vier korte ritmes van elk twee tellen: A, B, C en D. Je hoort ze achter elkaar in een verborgen volgorde. Tik de ritmes aan in de volgorde waarin je ze hoort.</p>
+  </header>
+
+  <details class="cfgbox" id="cfg" open>
+  <summary class="cfg">Instellingen</summary>
+  <section class="box bar" aria-label="Instellingen">
+    <div class="grp"><span class="lab">Niveau</span>
+      <div class="seg" id="level" role="group" aria-label="Niveau">
+        <button type="button" data-v="easy">Makkelijk</button><button type="button" data-v="mid">Gemiddeld</button><button type="button" data-v="hard">Moeilijk</button>
+      </div></div>
+    <div class="grp"><span class="lab">Tempo</span>
+      <div class="seg" id="tempo" role="group" aria-label="Tempo">
+        <button type="button" data-v="64">Langzaam</button><button type="button" data-v="84">Normaal</button><button type="button" data-v="108">Snel</button>
+      </div></div>
+    <div class="grp"><span class="lab">Inteller</span>
+      <label><input type="checkbox" id="countin" checked> Eerst vier tellen</label></div>
+    <div class="grp"><span class="lab">Zwakke plekken</span>
+      <div class="seg" id="focus" role="group" aria-label="Vaker herhalen wat fout ging">
+        <button type="button" data-v="on">Vaker</button><button type="button" data-v="off">Uit</button><button type="button" data-v="reset">Wis</button>
+      </div></div>
+  </section>
+  </details>
+
+  <section class="box" aria-live="polite">
+    <h2 id="qt">In welke volgorde hoor je de ritmes?</h2>
+    <p class="muted" id="hint">Luister, en tik dan de ritmes aan: eerst het eerste dat je hoorde, dan het tweede, enzovoort.</p>
+    <div class="bar">
+      <button type="button" class="go" id="listen">▶ Beluister</button>
+    </div>
+    <div class="slots" id="slots" role="group" aria-label="Jouw volgorde"></div>
+    <div class="cards" id="cards" role="group" aria-label="De vier ritmes"></div>
+    <div class="bar" id="actions">
+      <button type="button" class="go" id="check" disabled>Controleer</button>
+      <button type="button" class="go sec" id="clear">Opnieuw</button>
+    </div>
+    <div class="fb" id="fb"></div>
+  </section>
+
+  <section class="stats" id="stats" aria-label="Score"></section>
+</main>
+</Base>
+
+<style is:global>
+  .box.bar { flex-direction: row; } /* .box stacks in a column; the settings want to sit side by side */
+  summary.cfg { display: none; }
+  .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .slots button { position: relative; height: 64px; border: 2px dashed var(--muted); border-radius: 14px; background: transparent; color: var(--ink); font: 800 28px var(--display); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .slots button small { position: absolute; top: 4px; left: 8px; font: 700 12px var(--body); color: var(--muted); }
+  .slots button.full { border-style: solid; border-color: var(--ink); background: var(--card); }
+  .slots button.right { background: var(--good); border-color: var(--ink); color: #fff; }
+  .slots button.wrong { background: var(--bad); border-color: var(--ink); color: #fff; }
+  .slots button.right small, .slots button.wrong small { color: #fff; }
+  .slots button em { font: 700 12px var(--body); font-style: normal; margin-top: 4px; }
+  .slots button.hot, .cards button.hot { outline: 4px solid var(--violet); outline-offset: 2px; }
+  .slots button:disabled { cursor: default; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 520px; }
+  #actions[hidden] { display: none; }
+  .cards button { position: relative; padding: 6px 6px 2px; background: var(--card); border: 2px solid var(--ink); border-radius: 16px; cursor: pointer; transition: background 0.15s, transform 0.1s; color: var(--ink); display: block; width: 100%; }
+  .cards button svg { display: block; width: 100%; height: auto; pointer-events: none; }
+  .cards button b { position: absolute; top: 6px; left: 12px; font: 800 22px var(--display); }
+  .cards button:hover:not(:disabled) { background: var(--sun); transform: translateY(-2px); }
+  .cards button:hover:not(:disabled) .ink { fill: #1d1b3a; }
+  .cards button:disabled { cursor: default; }
+  .cards.done button { cursor: pointer; }
+  .cards button.used { opacity: 0.35; }
+  .compare { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) {
+    body { padding-block: 6px; }
+    .site-nav { margin-bottom: 6px; }
+    .site-nav ul, .site-foot { display: none; }
+    main { gap: 8px; }
+    header p { display: none; }
+    h1 { font-size: 22px; margin: 0; }
+    details.cfgbox > summary.cfg { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font: 600 14px var(--body); list-style: none; padding: 8px 14px; background: var(--card); border: 2px solid var(--ink); border-radius: 14px; }
+    summary.cfg::-webkit-details-marker { display: none; }
+    summary.cfg::after { content: "▾"; }
+    details[open] > summary.cfg::after { content: "▴"; }
+    details.cfgbox[open] > summary.cfg { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    details.cfgbox > .bar { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; gap: 8px 14px; }
+    .box { border-radius: 16px; padding: 12px; gap: 8px; }
+    h2 { font-size: 18px; margin: 0; }
+    .go { font-size: 16px; padding: 7px 18px; }
+    .cards { gap: 8px; }
+    #hint { display: none; }
+    .slots button { height: 52px; font-size: 24px; }
+    .fb { gap: 6px; min-height: 0; }
+    .fb .msg { font-size: 18px; }
+    .fb p { font-size: 13px; line-height: 1.3; }
+    .stats { flex-wrap: nowrap; gap: 8px; }
+    .stat { flex: 1; min-width: 0; padding: 2px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+    .stat small { display: inline; font-size: 10px; }
+    .stat b { font-size: 16px; }
+  }
+</style>
+
+<script>
+  import { $, store, save, seg, rnd, shuffle, makeStats, feedback, audio, stopSound } from "../lib/music.js";
+  import { drawRhythm, playLine } from "../lib/rhythm.js";
+
+  const CELL = 8; // two beats, in sixteenths
+  // A cell is a list of durations; a negative number is a rest of that length.
+  const SETS = {
+    easy: [[4, 4], [2, 2, 4], [4, 2, 2], [2, 2, 2, 2], [8]],
+    mid: [[4, -4], [-4, 4], [6, 2], [2, 2, -4], [4, 2, -2], [2, -2, 4], [2, 4, 2]],
+    hard: [[1, 1, 1, 1, 4], [4, 1, 1, 1, 1], [2, 1, 1, 4], [1, 1, 2, 4], [3, 1, 4], [4, 3, 1], [1, 1, 1, 1, 1, 1, 1, 1], [2, 2, 1, 1, 2], [1, 1, 2, 2, 2], [4, 1, 1, 2], [3, 1, 2, 2], [-2, 2, 4], [2, 1, 1, 2, 2]],
+  };
+  const POOLS = { easy: SETS.easy, mid: [...SETS.easy, ...SETS.mid], hard: [...SETS.mid, ...SETS.hard] };
+  const toEvents = (cell) => {
+    let on = 0;
+    return cell.map((d) => { const e = { on, dur: Math.abs(d), rest: d < 0 }; on += e.dur; return e; });
+  };
+  const idOf = (cell) => cell.join(",");
+
+  let level = store("rv-level", "easy", ["easy", "mid", "hard"]);
+  let tempo = Number(store("rv-tempo", "84", ["64", "84", "108"]));
+  let again = store("rv-focus", "on", ["on", "off"]) === "on";
+  let weak = {};
+  try { const w = JSON.parse(localStorage.getItem("rv-weak") || "{}"); if (w && typeof w === "object") weak = w; } catch (e) {}
+  try { if (localStorage.getItem("rv-countin") === "0") ($("countin") as HTMLInputElement).checked = false; } catch (e) {}
+  const stats = makeStats($("stats"), "rv-best");
+  const L = "ABCD";
+  let q: any = null;
+  let timers: number[] = [];
+
+  // Cells you mixed up come up more often: weight 1 + 3 per open miss; a right answer pays one miss back.
+  function track(id, ok) {
+    const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
+    if (n) weak[id] = n; else delete weak[id];
+    save("rv-weak", JSON.stringify(weak));
+  }
+  /** Four different cells. Hard mode likes cells that start alike, so the ear has to follow them to the end. */
+  function pickCells() {
+    const pool = POOLS[level].slice();
+    const out = [];
+    while (out.length < 4) {
+      const ws = pool.map((c) => {
+        let w = again ? 1 + 3 * (weak[idOf(c)] || 0) : 1;
+        if (level === "hard" && out.length && c[0] === out[0][0]) w *= 4;
+        return w;
+      });
+      let r = Math.random() * ws.reduce((a, b) => a + b, 0), i = 0;
+      for (; i < pool.length - 1; i++) { r -= ws[i]; if (r < 0) break; }
+      out.push(pool.splice(i, 1)[0]);
+    }
+    return shuffle(out);
+  }
+  function make() {
+    let cells, order;
+    const prev = q && q.cells.map(idOf).join("|") + ">" + q.order.join("");
+    do {
+      cells = pickCells();
+      order = shuffle([0, 1, 2, 3]);
+    } while (order.every((v, i) => v === i) || (prev && cells.map(idOf).join("|") + ">" + order.join("") === prev));
+    return { cells, order, picked: [], done: false };
+  }
+  const lineOf = (order) => order.flatMap((ci, k) => toEvents(q.cells[ci]).map((e) => ({ ...e, on: e.on + k * CELL })));
+
+  function clearHot() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    document.querySelectorAll(".hot").forEach((n) => n.classList.remove("hot"));
+  }
+  function play(order, hot) {
+    audio();
+    clearHot();
+    const secs = playLine(lineOf(order), tempo, 8, ($("countin") as HTMLInputElement).checked);
+    if (!hot || !secs) return;
+    const beat = 60 / tempo, t0 = 0.06 + (($("countin") as HTMLInputElement).checked ? 4 * beat : 0);
+    order.forEach((ci, k) => {
+      timers.push(window.setTimeout(() => {
+        document.querySelectorAll(".hot").forEach((n) => n.classList.remove("hot"));
+        $("cards").children[ci].classList.add("hot");
+        $("slots").children[k].classList.add("hot");
+      }, (t0 + k * 2 * beat) * 1000));
+    });
+    timers.push(window.setTimeout(clearHot, (t0 + 8 * beat) * 1000));
+  }
+
+  function render() {
+    const cards = $("cards"), slots = $("slots");
+    cards.innerHTML = "";
+    cards.classList.toggle("done", q.done);
+    ($("actions") as HTMLElement).hidden = q.done;
+    slots.innerHTML = "";
+    q.cells.forEach((cell, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("aria-label", "Ritme " + L[i]);
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      drawRhythm(svg, toEvents(cell), { W: 200, total: CELL });
+      b.append(svg);
+      b.insertAdjacentHTML("afterbegin", `<b>${L[i]}</b>`);
+      b.classList.toggle("used", !q.done && q.picked.includes(i));
+      b.disabled = !q.done && q.picked.includes(i);
+      b.onclick = () => {
+        if (q.done) { audio(); clearHot(); playLine(toEvents(cell), tempo, 2, false); return; } // after the answer a card plays alone
+        if (q.picked.length >= 4 || q.picked.includes(i)) return;
+        q.picked.push(i); stopSound(); clearHot(); render();
+      };
+      cards.append(b);
+    });
+    for (let k = 0; k < 4; k++) {
+      const b = document.createElement("button");
+      b.type = "button";
+      const v = q.picked[k];
+      b.innerHTML = `<small>${k + 1}</small>` + (v === undefined ? "" : L[v]);
+      b.setAttribute("aria-label", v === undefined ? `Plek ${k + 1}, leeg` : `Plek ${k + 1}: ritme ${L[v]}. Tik om weg te halen`);
+      b.classList.toggle("full", v !== undefined);
+      b.disabled = q.done || v === undefined;
+      b.onclick = () => { if (q.done) return; q.picked.splice(k, 1); render(); };
+      if (q.done) {
+        const ok = v === q.order[k];
+        b.classList.add(ok ? "right" : "wrong");
+        if (!ok) b.insertAdjacentHTML("beforeend", `<em>juist: ${L[q.order[k]]}</em>`);
+      }
+      slots.append(b);
+    }
+    ($("check") as HTMLButtonElement).disabled = q.done || q.picked.length < 4;
+    ($("clear") as HTMLButtonElement).disabled = q.done || !q.picked.length;
+    if (q.done) result(); else $("fb").innerHTML = "";
+  }
+
+  function result() {
+    const right = q.picked.map((v, k) => v === q.order[k]);
+    const ok = right.every(Boolean);
+    const n = right.filter(Boolean).length;
+    const rightOrder = q.order.map((v) => L[v]).join(" – ");
+    const head = ok ? "Goed zo!" : n ? `${n} van 4 op de juiste plek.` : "Dit was de volgorde.";
+    feedback($("fb"), ok, head, `Juiste volgorde: ${rightOrder}.`, () => { q = make(); render(); play(q.order, false); });
+    const cmp = document.createElement("div");
+    cmp.className = "compare";
+    const mk = (label, order) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "go sec";
+      b.textContent = label;
+      b.onclick = () => play(order, true);
+      cmp.append(b);
+    };
+    mk("▶ Juiste volgorde", q.order);
+    if (!ok) mk("▶ Jouw volgorde", q.picked);
+    $("fb").insertBefore(cmp, $("fb").querySelector(".go"));
+  }
+
+  function check() {
+    if (q.done || q.picked.length < 4) return;
+    q.done = true;
+    q.picked.forEach((v, k) => { track(idOf(q.cells[q.order[k]]), v === q.order[k]); if (v !== q.order[k]) track(idOf(q.cells[v]), false); });
+    stats.record(q.picked.every((v, k) => v === q.order[k]));
+    stopSound();
+    render();
+  }
+
+  $("listen").onclick = () => play(q.order, q.done);
+  $("check").onclick = check;
+  $("clear").onclick = () => { q.picked = []; render(); };
+  seg($("level"), level, (v) => { level = v; save("rv-level", v); q = make(); render(); play(q.order, false); });
+  seg($("tempo"), String(tempo), (v) => { tempo = Number(v); save("rv-tempo", v); play(q.order, q.done); });
+  ($("countin") as HTMLInputElement).onchange = (e) => save("rv-countin", (e.target as HTMLInputElement).checked ? "1" : "0");
+  const focus = $("focus");
+  seg(focus, again ? "on" : "off", (v) => { again = v === "on"; save("rv-focus", v); });
+  // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
+  focus.querySelector('[data-v="reset"]').onclick = () => {
+    weak = {};
+    try { localStorage.removeItem("rv-weak"); } catch (e) {}
+  };
+  focus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
+  try { if (matchMedia("(max-width:600px)").matches) ($("cfg") as HTMLDetailsElement).open = false; } catch (e) {}
+  q = make();
+  render();
+</script>
