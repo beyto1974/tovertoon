@@ -55,7 +55,8 @@ const groups = [
   <body style={`--wrap:${wrap}`}>
     <nav class="site-nav" aria-label="Hoofdmenu">
       <a class="brand" href={`${base}/`}>Tovertoon</a>
-      <ul class="menus">
+      <button type="button" class="menu-btn" aria-expanded="false" aria-controls="menus">Menu</button>
+      <ul class="menus" id="menus">
         {groups.map((g) => (
           <li>
             <details class="menu">
@@ -75,10 +76,31 @@ const groups = [
       Tovertoon is gratis en open source onder de MIT-licentie. <a href={`${base}/lettertypes.txt`}>Lettertypelicenties</a>
     </footer>
     <script>
-      const menus = [...document.querySelectorAll("details.menu")];
-      menus.forEach((m) => m.addEventListener("toggle", () => { if (m.open) menus.forEach((o) => { if (o !== m) o.open = false; }); }));
-      document.addEventListener("click", (e) => { if (!(e.target as Element).closest("details.menu")) menus.forEach((m) => (m.open = false)); });
-      document.addEventListener("keydown", (e) => { if (e.key === "Escape") menus.forEach((m) => { if (m.open) { m.open = false; (m.querySelector("summary") as HTMLElement).focus(); } }); });
+      // Wide screens: three dropdowns, one open at a time. Phones: one Menu button that opens every group as a list.
+      const nav = document.querySelector(".site-nav") as HTMLElement;
+      const btn = nav.querySelector(".menu-btn") as HTMLButtonElement;
+      const menus = [...nav.querySelectorAll("details.menu")] as HTMLDetailsElement[];
+      const phone = matchMedia("(max-width: 600px)");
+      const setNav = (open: boolean) => {
+        nav.classList.toggle("open", open);
+        btn.setAttribute("aria-expanded", String(open));
+        btn.textContent = open ? "Sluit" : "Menu";
+        menus.forEach((m) => (m.open = open && phone.matches));
+      };
+      btn.addEventListener("click", () => setNav(!nav.classList.contains("open")));
+      menus.forEach((m) => {
+        m.addEventListener("toggle", () => { if (!phone.matches && m.open) menus.forEach((o) => { if (o !== m) o.open = false; }); });
+        // on a phone the group titles are headings, not buttons
+        m.querySelector("summary")!.addEventListener("click", (e) => { if (phone.matches) e.preventDefault(); });
+      });
+      const closeAll = () => (phone.matches ? setNav(false) : menus.forEach((m) => (m.open = false)));
+      document.addEventListener("click", (e) => { if (!(e.target as Element).closest(".site-nav")) closeAll(); });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        if (phone.matches) { if (nav.classList.contains("open")) { setNav(false); btn.focus(); } }
+        else menus.forEach((m) => { if (m.open) { m.open = false; (m.querySelector("summary") as HTMLElement).focus(); } });
+      });
+      phone.addEventListener("change", () => setNav(false));
     </script>
   </body>
 </html>
