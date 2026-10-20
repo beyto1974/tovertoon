@@ -209,10 +209,16 @@ import "../styles/components.css";
     for (let i = 0; i < ivs.length; i++) { r -= ws[i]; if (r < 0) return ivs[i]; }
     return ivs[ivs.length - 1];
   }
+  /** "Wis" does nothing while no misses are recorded, so it is disabled then. */
+  function syncWipe() {
+    const b = document.querySelector('#ofocus [data-v="reset"]');
+    if (b) (b as HTMLButtonElement).disabled = !Object.keys(weak).length;
+  }
   function track(id, ok) {
     const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
     if (n) weak[id] = n; else delete weak[id];
     save("iv-weak", JSON.stringify(weak));
+    syncWipe();
   }
   // By ear the overmatige kwart and verminderde kwint cannot be told apart, so they become one "tritonus".
   const label = (iv) => (omode !== "staff" && iv.id === "o4" ? "tritonus" : iv.name);
@@ -351,9 +357,11 @@ import "../styles/components.css";
   // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
   ofocus.querySelector('[data-v="reset"]').onclick = () => {
     weak = {};
+    syncWipe();
     try { localStorage.removeItem("iv-weak"); } catch (e) {}
   };
   ofocus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
+  syncWipe();
 
   bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); render(); });
   function showRowQuiet() {

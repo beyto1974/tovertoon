@@ -63,6 +63,8 @@ import "../styles/components.css";
   #circle { display: block; width: 100%; max-width: 440px; margin: 0 auto; height: auto; }
   #circle .w { fill: var(--card); stroke: var(--ink); stroke-width: 2; cursor: pointer; transition: fill 0.12s; }
   #circle .w:hover { fill: var(--hover); }
+  #circle .w[aria-disabled="true"] { cursor: default; }
+  #circle .w[aria-disabled="true"]:hover { fill: var(--card); }
   #circle .w.sel { fill: var(--violet); }
   #circle .w.nb { fill: var(--sun); }
   #circle .w.par { fill: var(--hover); }
@@ -195,12 +197,21 @@ import "../styles/components.css";
     const n = nm(nameOf(q.r, q.p)) + " " + kindWord(q.r);
     return q.t === "dom" ? `Wat is de dominant van ${n}?` : q.t === "sub" ? `Wat is de subdominant van ${n}?` : `Wat is de parallelle toonsoort van ${n}?`;
   }
+  /** After an answer the wedges do nothing until the next question, so they are marked disabled. */
+  function lockWedges() {
+    const off = mode === "quiz" && !!q && q.done;
+    ["maj", "min"].forEach((r) => wedges[r].forEach((w) => {
+      w.path.setAttribute("aria-disabled", String(off));
+      w.path.setAttribute("tabindex", off ? "-1" : "0");
+    }));
+  }
   function quizRender() {
     $("qt").textContent = qText();
     $("qfb").innerHTML = "";
     paint();
     wedges[q.r][q.p].path.setAttribute("class", "w sel");
     if (q.done) quizResult();
+    lockWedges();
   }
   function quizResult() {
     const [ar, ap] = answerKey(q);
@@ -230,7 +241,7 @@ import "../styles/components.css";
     save("kc-mode", m);
     $("explore").hidden = m !== "explore";
     $("quiz").hidden = m !== "quiz";
-    if (m === "quiz") { q = q || makeQ(); quizRender(); } else info();
+    if (m === "quiz") { q = q || makeQ(); quizRender(); } else { info(); lockWedges(); }
   }
   seg($("mode"), mode, setMode);
   bindNames($("names"), () => { labels(); if (mode === "explore") info(); else quizRender(); });

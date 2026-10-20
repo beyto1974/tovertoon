@@ -203,10 +203,16 @@ summary.cfg{display:none}
     for (let i = 0; i < ids.length; i++) { r -= ws[i]; if (r < 0) return ids[i]; }
     return ids[ids.length - 1];
   }
+  /** "Wis" does nothing while no misses are recorded, so it is disabled then. */
+  function syncWipe() {
+    const b = document.querySelector('#focus [data-v="reset"]');
+    if (b) (b as HTMLButtonElement).disabled = !Object.keys(weak).length;
+  }
   function track(id, ok) {
     const w = weak[id] || 0, n = ok ? Math.max(0, w - 1) : Math.min(5, w + 2);
     if (n) weak[id] = n; else delete weak[id];
     save("th-weak", JSON.stringify(weak));
+    syncWipe();
   }
   function make() {
     const ids = POOLS[pool];
@@ -312,9 +318,11 @@ summary.cfg{display:none}
   // "Wis" is an action, not a choice: it clears the misses and keeps the on/off pressed state.
   focus.querySelector('[data-v="reset"]').onclick = () => {
     weak = {};
+    syncWipe();
     try { localStorage.removeItem("th-weak"); } catch (e) {}
   };
   focus.querySelector('[data-v="reset"]').setAttribute("aria-pressed", "false");
+  syncWipe();
   bindNames($("names"), () => { if (q.done) showResult(); });
   $("play").onclick = () => play(); // not `= play`: the click event would arrive as the scale type
   try { if (matchMedia("(max-width:600px)").matches) $("cfg").open = false; } catch (e) {}

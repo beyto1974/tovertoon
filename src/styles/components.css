@@ -16,6 +16,11 @@ p { margin: 0; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .seg button:hover { background: var(--sun); color: #1d1b3a; }
 .seg button[aria-pressed="true"]:hover { background: var(--ink); color: var(--paper); }
+/* A button that does nothing right now is disabled, and looks it. */
+.go:disabled, .pill:disabled, .seg button:disabled { opacity: 0.4; cursor: default; }
+.go:disabled:hover { filter: none; }
+.go.sec:disabled:hover, .pill:disabled:hover { background: var(--card); color: var(--ink); }
+.seg button:disabled:hover { background: transparent; color: var(--ink); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
 .pill { font: 600 15px var(--body); color: var(--ink); background: var(--card); border: 2px solid var(--ink); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
 .pill:hover { background: var(--sun); color: #1d1b3a; }
