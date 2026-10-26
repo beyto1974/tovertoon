@@ -16,6 +16,14 @@ import "../styles/components.css";
       <div class="seg" id="level" role="group" aria-label="Niveau">
         <button type="button" data-v="step">Stappen</button><button type="button" data-v="leap">Sprongen</button><button type="button" data-v="keys">Toonsoorten</button>
       </div></div>
+    <div class="grp"><span class="lab">Lengte (noten)</span>
+      <div class="seg" id="len" role="group" aria-label="Lengte in noten">
+        <button type="button" data-v="3">3</button><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button><button type="button" data-v="7">7</button><button type="button" data-v="8">8</button>
+      </div></div>
+    <div class="grp"><span class="lab">Max. sprong</span>
+      <div class="seg" id="leap" role="group" aria-label="Grootste sprong">
+        <button type="button" data-v="1">Stap</button><button type="button" data-v="2">Terts</button><button type="button" data-v="3">Kwart</button><button type="button" data-v="4">Kwint</button><button type="button" data-v="7">Octaaf</button>
+      </div></div>
     <div class="grp"><span class="lab">Ritme</span>
       <div class="seg" id="rhythm" role="group" aria-label="Ritme">
         <button type="button" data-v="quarters">Kwarten</button><button type="button" data-v="mixed">Gegeven</button><button type="button" data-v="write">Zelf schrijven</button>
@@ -123,12 +131,14 @@ import "../styles/components.css";
   import { $, LETTERS, nm, bindNames, pitch, midi, playMidi, stopSound, staff, el, CLEFS, STAFF_BOTTOM, GAP, store, save, seg, rnd, makeStats, feedback } from "../lib/music.js";
   import { restShape } from "../lib/rhythm.js";
 
-  // Levels: n = notes in the quarter-note melody (the first one is given), keys = key signatures it can use, leaps = more than steps.
+  // Levels set the starting length and largest leap (both can be changed after), plus the key signatures.
+  // n = notes in the quarter-note melody (the first one is given), leap = largest jump in staff positions (1 = steps only, 7 = octave).
   const LEVELS = {
-    step: { n: 5, keys: [0], leaps: false },
-    leap: { n: 6, keys: [0], leaps: true },
-    keys: { n: 7, keys: [0, 1, 2, -1, -2], leaps: true },
+    step: { n: 5, keys: [0], leap: 1 },
+    leap: { n: 6, keys: [0], leap: 4 },
+    keys: { n: 7, keys: [0, 1, 2, -1, -2], leap: 4 },
   };
+  const LENS = ["3", "4", "5", "6", "7", "8"], LEAPS = ["1", "2", "3", "4", "7"];
   const KEYS = { 0: "C", 1: "G", 2: "D", "-1": "F", "-2": "B" }; // major keys; B♭ has its tonic on B♭ (flat from the signature)
   const SHARPS = ["F", "C", "G", "D", "A", "E", "B"], FLATS = ["B", "E", "A", "D", "G", "C", "F"];
   const alterOf = (letter, ks) => (ks > 0 && SHARPS.slice(0, ks).includes(letter) ? 1 : ks < 0 && FLATS.slice(0, -ks).includes(letter) ? -1 : 0);
@@ -159,6 +169,11 @@ import "../styles/components.css";
 
   let level = store("dt-level", "step", Object.keys(LEVELS));
   let rhythm = store("dt-rhythm", "quarters", ["quarters", "mixed", "write"]);
+  let len = store("dt-len", String(LEVELS[level].n), LENS);
+  let maxLeap = store("dt-leap", String(LEVELS[level].leap), LEAPS);
+  const press = (box, v) => box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+  // The length only applies to the quarter-note melody; other rhythms fill one bar.
+  const syncLen = () => $("len").querySelectorAll("button").forEach((b) => (b.disabled = rhythm !== "quarters"));
   let q = null, busy = false, timers = [], armed = false;
   const stats = makeStats($("stats"), "dt-best");
 
@@ -187,8 +202,8 @@ import "../styles/components.css";
   };
 
   // ---- generating a melody ----
-  function rhythmSpec(mode, lv) {
-    if (mode === "quarters") return Array(lv.n).fill(0).map(() => ({ dur: 4, rest: false, tie: false }));
+  function rhythmSpec(mode) {
+    if (mode === "quarters") return Array(+len).fill(0).map(() => ({ dur: 4, rest: false, tie: false }));
     if (mode === "mixed") return BARS[rnd(BARS.length)].map((dur) => ({ dur, rest: false, tie: false }));
     if (Math.random() < 0.45) return TIE_BARS[rnd(TIE_BARS.length)].map(([dur, tie]) => ({ dur, rest: false, tie: !!tie }));
     const spec = BARS[rnd(BARS.length)].map((dur) => ({ dur, rest: false, tie: false }));
@@ -203,14 +218,16 @@ import "../styles/components.css";
     const lv = LEVELS[level];
     for (let attempt = 0; attempt < 300; attempt++) {
       const ks = lv.keys[rnd(lv.keys.length)];
-      const spec = rhythmSpec(rhythm, lv);
+      const spec = rhythmSpec(rhythm);
       const groups = spec.filter((e, i) => !e.rest && !(i > 0 && spec[i - 1].tie)).length; // pitches to write
       const t = pitch(KEYS[ks], ks === -2 ? 3 : 4).d; // tonic position; the B♭ key sits an octave lower to stay on the staff
       const lo = t - 2, hi = t + 9;
       const ds = [t + [0, 2, 4][rnd(3)]];
       let leapBefore = false;
       for (let tries = 0; ds.length < groups && tries < 60; tries++) {
-        const steps = lv.leaps && !leapBefore ? [-1, 1, -1, 1, -1, 1, -2, 2, -3, 3, -4, 4] : [-1, 1];
+        // steps count three times as much as any one leap; a leap is never followed by another leap
+        const steps = [-1, 1, -1, 1, -1, 1];
+        if (!leapBefore) for (let k = 2; k <= +maxLeap; k++) steps.push(-k, k);
         const s = steps[rnd(steps.length)], d = ds[ds.length - 1] + s;
         if (d < lo || d > hi) continue;
         ds.push(d);
@@ -502,8 +519,18 @@ import "../styles/components.css";
     render();
     if (armed) listen();
   }
-  seg($("level"), level, (v) => { level = v; save("dt-level", v); next(); });
-  seg($("rhythm"), rhythm, (v) => { rhythm = v; save("dt-rhythm", v); next(); });
+  // A level picks its own length and leap; both can then be changed on their own.
+  seg($("level"), level, (v) => {
+    level = v; save("dt-level", v);
+    len = String(LEVELS[v].n); maxLeap = String(LEVELS[v].leap);
+    save("dt-len", len); save("dt-leap", maxLeap);
+    press($("len"), len); press($("leap"), maxLeap);
+    next();
+  });
+  seg($("len"), len, (v) => { len = v; save("dt-len", v); next(); });
+  seg($("leap"), maxLeap, (v) => { maxLeap = v; save("dt-leap", v); next(); });
+  seg($("rhythm"), rhythm, (v) => { rhythm = v; save("dt-rhythm", v); syncLen(); next(); });
+  syncLen();
   bindNames($("names"), () => {
     if (!q) return;
     render();
