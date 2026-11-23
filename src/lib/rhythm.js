@@ -226,6 +226,8 @@ export function cellPool(meter, level) {
   const c = CELLS[meter];
   return level === "easy" ? c.easy : level === "mid" ? [...c.easy, ...c.mid] : [...c.mid, ...c.hard];
 }
+/** Every cell of a meter, easy ones first. */
+export const cellsOf = (meter) => [...CELLS[meter].easy, ...CELLS[meter].mid, ...CELLS[meter].hard];
 export function toEvents(cell, start = 0) {
   let on = start;
   return cell.map((d) => { const e = { on, dur: Math.abs(d), rest: d < 0 }; on += e.dur; return e; });

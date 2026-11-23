@@ -27,6 +27,12 @@ import "../styles/components.css";
     <div class="grp"><span class="lab">Inteller</span>
       <label><input type="checkbox" id="countin" checked> Eerst een inteller</label></div>
   </section>
+  <details class="box" id="pickbox">
+    <summary class="picksum">Ritmes kiezen <span class="muted" id="pickn"></span></summary>
+    <p class="muted" id="pickhint"></p>
+    <div id="tiles"></div>
+    <div class="pals"><button type="button" class="pill" id="pickall">Alles aan</button></div>
+  </details>
   </details>
 
   <section class="box" aria-live="polite">
@@ -73,6 +79,13 @@ import "../styles/components.css";
   .band { opacity: 0.22; }
   .band.good { fill: var(--good); }
   .band.bad { fill: var(--bad); }
+  #pickbox { margin-top: 12px; }
+  #pickbox > summary.picksum { cursor: pointer; font: 600 15px var(--body); }
+  #tiles { display: flex; flex-direction: column; gap: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+  .tile { background: var(--card); border: 2px solid var(--muted); border-radius: 12px; padding: 0 4px; cursor: pointer; opacity: 0.45; }
+  .tile svg { display: block; width: 100%; height: auto; pointer-events: none; }
+  .tile[aria-pressed="true"] { border-color: var(--violet); box-shadow: inset 0 0 0 2px var(--violet); opacity: 1; }
   .pals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .pals .pill:disabled { opacity: 0.4; cursor: default; }
   #pal[hidden], #ansbox[hidden], #actions[hidden] { display: none; }
@@ -102,25 +115,89 @@ import "../styles/components.css";
     .stat { flex: 1; min-width: 0; padding: 2px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
     .stat small { display: inline; font-size: 10px; }
     .stat b { font-size: 16px; }
+    .tiles { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .tile { border-radius: 8px; padding: 0 2px; }
   }
 </style>
 
 <script>
-  import { $, store, save, seg, makeStats, feedback, audio, stopSound } from "../lib/music.js";
-  import { drawRhythm, playLine, METERS, randomBar, sounds } from "../lib/rhythm.js";
+  import { $, rnd, store, save, seg, makeStats, feedback, audio, stopSound } from "../lib/music.js";
+  import { drawRhythm, playLine, METERS, cellPool, cellsOf, toEvents, sounds } from "../lib/rhythm.js";
 
   // [length in sixteenths, button text, spoken name]
   const NOTE_VALUES = [[16, "hele", "hele noot"], [12, "halve.", "halve noot met punt"], [8, "halve", "halve noot"], [6, "kwart.", "kwartnoot met punt"], [4, "kwart", "kwartnoot"], [3, "achtste.", "achtste met punt"], [2, "achtste", "achtste"], [1, "zestiende", "zestiende"]];
   const REST_VALUES = [[16, "hele rust", "hele rust"], [12, "halve rust.", "halve rust met punt"], [8, "halve rust", "halve rust"], [6, "kwartrust.", "kwartrust met punt"], [4, "kwartrust", "kwartrust"], [2, "achtste rust", "achtste rust"], [1, "zestiende rust", "zestiende rust"]];
   const NAMES = Object.fromEntries(NOTE_VALUES.map(([d, , n]) => [d, n]));
   const RNAMES = Object.fromEntries(REST_VALUES.map(([d, , n]) => [d, n]));
-  const HARD_ONLY = [3, 1]; // dotted eighth and sixteenth only show up on the hard level
 
   let meter = store("rd-meter", "4/4", Object.keys(METERS));
   let level = store("rd-level", "easy", ["easy", "mid", "hard"]);
   let tempo = Number(store("rd-tempo", "84", ["64", "84", "108"]));
   try { if (localStorage.getItem("rd-countin") === "0") ($("countin") as HTMLInputElement).checked = false; } catch (e) {}
   const stats = makeStats($("stats"), "rd-best");
+
+  // The rhythms that can come up: one-bar cells, chosen per meter. A level picks its cells; a tile switches one on or off.
+  const LEVELS = [["easy", "Makkelijk"], ["mid", "Gemiddeld"], ["hard", "Moeilijk"]];
+  const cellMeter = () => (meter === "4/4" ? "2/4" : meter); // 4/4 has no cells of its own: it joins two 2/4 ones
+  const ck = (c) => c.join(",");
+  const levelKeys = (lv) => cellPool(cellMeter(), lv).map(ck);
+  function loadPick() {
+    const all = cellsOf(cellMeter()).map(ck);
+    const kept = store("rd-pick-" + meter, "").split("|").filter((k) => all.includes(k));
+    return new Set(kept.length ? kept : levelKeys(level));
+  }
+  let pick = loadPick();
+  const chosen = () => cellsOf(cellMeter()).filter((c) => pick.has(ck(c)));
+  function randomBar() {
+    const p = chosen(), a = p[rnd(p.length)];
+    if (meter !== "4/4") return toEvents(a);
+    let b;
+    do { b = p[rnd(p.length)]; } while (b === a && p.length > 1);
+    return [...toEvents(a), ...toEvents(b, 8)];
+  }
+  /** The level button stays pressed only while the chosen rhythms are exactly that level. */
+  function syncLevel() {
+    const same = (lv) => { const k = levelKeys(lv); return k.length === pick.size && k.every((x) => pick.has(x)); };
+    document.querySelectorAll("#level button").forEach((b: any) => b.setAttribute("aria-pressed", String(same(b.dataset.v))));
+  }
+  function drawTiles() {
+    const cm = cellMeter(), m = METERS[cm], host = $("tiles");
+    host.innerHTML = "";
+    const shown = new Set();
+    LEVELS.forEach(([lv, name]) => {
+      const cells = cellPool(cm, lv).filter((c) => !shown.has(ck(c)));
+      if (!cells.length) return;
+      const lab = document.createElement("div");
+      lab.className = "lab";
+      lab.textContent = name;
+      const grid = document.createElement("div");
+      grid.className = "tiles";
+      cells.forEach((c) => {
+        shown.add(ck(c));
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "tile";
+        b.setAttribute("aria-pressed", String(pick.has(ck(c))));
+        b.setAttribute("aria-label", "Ritme " + c.map((d) => (d < 0 ? RNAMES[-d] : NAMES[d])).join(", "));
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        b.append(svg);
+        drawRhythm(svg as unknown as SVGElement, toEvents(c), { W: 60 + m.total * 16, total: m.total, beat: m.beatLen });
+        b.onclick = () => {
+          if (pick.has(ck(c))) { if (pick.size === 1) return; pick.delete(ck(c)); } else pick.add(ck(c));
+          b.setAttribute("aria-pressed", String(pick.has(ck(c))));
+          savePick();
+          fresh();
+        };
+        grid.append(b);
+      });
+      host.append(lab, grid);
+    });
+    $("pickhint").textContent = (meter === "4/4" ? "In 4/4 komen twee van deze ritmes na elkaar. " : "") + "Tik een ritme aan of uit. Er blijft er altijd minstens één aan.";
+    countPick();
+  }
+  const countPick = () => { $("pickn").textContent = `(${pick.size} van ${cellsOf(cellMeter()).length})`; syncLevel(); };
+  function savePick() { save("rd-pick-" + meter, [...pick].join("|")); countPick(); }
+  $("pickall").onclick = () => { pick = new Set(cellsOf(cellMeter()).map(ck)); savePick(); drawTiles(); fresh(); };
   let q: any = null;
 
   const M = () => METERS[q.meter];
@@ -138,7 +215,7 @@ import "../styles/components.css";
 
   function make() {
     let ev, tries = 0;
-    do { ev = randomBar(meter, level); } while (q && key(ev) === key(q.ev) && ++tries < 50);
+    do { ev = randomBar(); } while (q && key(ev) === key(q.ev) && ++tries < 50);
     return { meter, ev, u: [], done: false, bands: null };
   }
 
@@ -156,7 +233,7 @@ import "../styles/components.css";
       const rem = m.total - u, last = q.u[q.u.length - 1];
       document.querySelectorAll("#palnotes button, #palrests button").forEach((b: any) => {
         const d = Number(b.dataset.d);
-        b.hidden = d > m.total || (level !== "hard" && HARD_ONLY.includes(d));
+        b.hidden = d > m.total || ((d === 1 || d === 3) && !chosen().some((c) => c.some((x) => Math.abs(x) === d || (d === 1 && Math.abs(x) === 3))));
         b.disabled = d > rem || (b.dataset.rest === "1" && !!(last && last.tie));
       });
       ($("tie") as HTMLButtonElement).disabled = !last || last.rest || rem === 0;
@@ -249,10 +326,11 @@ import "../styles/components.css";
   $("listen").onclick = () => play(q.ev);
   $("own").onclick = () => play(heard(q.u));
   $("check").onclick = check;
-  seg($("meter"), meter, (v) => { meter = v; save("rd-meter", v); fresh(); play(q.ev); });
-  seg($("level"), level, (v) => { level = v; save("rd-level", v); fresh(); play(q.ev); });
+  seg($("meter"), meter, (v) => { meter = v; save("rd-meter", v); pick = loadPick(); drawTiles(); fresh(); play(q.ev); });
+  seg($("level"), level, (v) => { level = v; save("rd-level", v); pick = new Set(levelKeys(v)); savePick(); drawTiles(); fresh(); play(q.ev); });
   seg($("tempo"), String(tempo), (v) => { tempo = Number(v); save("rd-tempo", v); play(q.ev); });
   ($("countin") as HTMLInputElement).onchange = (e) => save("rd-countin", (e.target as HTMLInputElement).checked ? "1" : "0");
   try { if (matchMedia("(max-width:600px)").matches) ($("cfg") as HTMLDetailsElement).open = false; } catch (e) {}
+  drawTiles();
   fresh();
 </script>
