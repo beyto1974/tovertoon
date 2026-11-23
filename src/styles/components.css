@@ -64,8 +64,12 @@ ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column;
 .kbd .key { stroke: var(--ink); stroke-width: 2; cursor: pointer; }
 .kbd .wk { fill: var(--card); }
 .kbd .bk { fill: var(--ink); }
-.kbd .wk:hover { fill: var(--hover); }
-.kbd .bk:hover { fill: var(--violet); }
+/* Hover only on unmarked keys and only with a real pointer: a tap leaves :hover stuck on phones, which hid the green or red of the key just pressed. */
+@media (hover: hover) {
+  .kbd .wk:not(.scale, .tonic, .good, .bad):hover { fill: var(--hover); }
+  .kbd .bk:not(.scale, .tonic, .good, .bad):hover { fill: var(--violet); }
+}
+.kbd .key:active { stroke-width: 4; }
 .kbd .scale { fill: var(--violet); }
 .kbd .tonic { fill: var(--sun); }
 .kbd .bk.tonic { fill: var(--sun); }
