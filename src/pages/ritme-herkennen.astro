@@ -1,0 +1,108 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+---
+<Base title="Ritme herkennen" description="Hoor een maat in 4/4 en kies het notenbeeld dat erbij hoort, makkelijk of met rusten, punten en zestienden.">
+  <main>
+    <header>
+      <h1>Ritme herkennen</h1>
+      <p class="muted">Je hoort een maat in 4/4 en kiest het notenbeeld dat erbij hoort. Twijfel je over een teken, lees het dan na op <a href={`${base}/ritme`}>Ritme lezen</a>.</p>
+    </header>
+
+    <section class="box" aria-labelledby="h-oef">
+      <h2 id="h-oef">Welk ritme hoor je?</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Niveau</span><div class="seg" id="level" role="group" aria-label="Niveau">
+          <button type="button" data-v="easy">Makkelijk</button><button type="button" data-v="hard">Moeilijk</button></div></div>
+        <div class="grp"><span class="lab">Tempo</span><div class="seg" id="tempo" role="group" aria-label="Tempo">
+          <button type="button" data-v="64">Langzaam</button><button type="button" data-v="84">Normaal</button><button type="button" data-v="108">Snel</button></div></div>
+        <label class="grp"><span class="lab">Inteller</span><span><input type="checkbox" id="countin" checked> Eerst vier tellen</span></label>
+      </div>
+      <p class="muted">Je hoort een maat in 4/4. De zachte tik is de tel. Kies het notenbeeld dat erbij hoort.</p>
+      <button type="button" class="go" id="again">▶ Beluister</button>
+      <div class="rhopts" id="opts"></div>
+      <div class="fb" id="fb" aria-live="polite"></div>
+      <div class="stats" id="stats"></div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .rhopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; }
+  .rhopts button { padding: 6px 6px 2px; background: var(--card); border: 2px solid var(--ink); border-radius: 16px; cursor: pointer; transition: background 0.15s, transform 0.1s; color: var(--ink); display: block; width: 100%; }
+  .rhopts button svg { display: block; width: 100%; height: auto; pointer-events: none; }
+  .rhopts button:hover:not(:disabled) { background: var(--sun); transform: translateY(-2px); }
+  .rhopts button:hover:not(:disabled) .ink { fill: #1d1b3a; }
+  .rhopts button.right { background: var(--good); }
+  .rhopts button.wrong { background: var(--bad); }
+  .rhopts button.right .line, .rhopts button.wrong .line, .rhopts button.right .stem, .rhopts button.wrong .stem { stroke: #fff; }
+  .rhopts button.right .ink, .rhopts button.wrong .ink, .rhopts button.right .head:not(.hollow), .rhopts button.wrong .head:not(.hollow) { fill: #fff; }
+  .rhopts button.right .hollow, .rhopts button.wrong .hollow { stroke: #fff; fill: transparent; }
+  .rhopts button:disabled { cursor: default; }
+  .rhopts button:disabled:not(.right):not(.wrong) { opacity: 0.5; }
+</style>
+
+<script>
+  import { $, store, save, seg, makeStats, feedback, shuffle, audio } from "../lib/music.js";
+  import { drawRhythm, makeBar, distractors, playBar, signature, syllable } from "../lib/rhythm.js";
+
+  // ---- exercise ----
+  let level = store("rt-level", "easy", ["easy", "hard"]);
+  let tempo = Number(store("rt-tempo", "84", ["64", "84", "108"]));
+  const stats = makeStats($("stats"), "rt-best");
+  let q = null;
+  function make() {
+    let bar;
+    do { bar = makeBar(level); } while (q && signature(q.bar) === signature(bar));
+    const wrong = distractors(bar, level);
+    const opts = shuffle([bar, ...wrong]);
+    return { bar, opts, done: false };
+  }
+  function listen() { playBar(q.bar, tempo, $("countin").checked); }
+  function render() {
+    const o = $("opts");
+    o.innerHTML = "";
+    q.opts.forEach((ev, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.v = signature(ev);
+      b.setAttribute("aria-label", "Notenbeeld " + (i + 1));
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      drawRhythm(svg, ev, { W: 340, time: [4, 4] });
+      b.append(svg);
+      b.onclick = () => answer(signature(ev), b);
+      o.append(b);
+    });
+    $("fb").innerHTML = "";
+    if (q.done) result();
+  }
+  function explain() {
+    const hits = q.bar.filter((e) => !e.rest).map((e) => syllable(e.on));
+    const rests = q.bar.filter((e) => e.rest).map((e) => syllable(e.on));
+    let t = `Noten op: ${hits.join(", ")}.`;
+    if (rests.length) t += ` Rust op: ${rests.join(", ")}.`;
+    return t;
+  }
+  function result() {
+    const right = signature(q.bar);
+    [...$("opts").children].forEach((b) => {
+      b.disabled = true;
+      if (b.dataset.v === right) b.classList.add("right");
+      else if (b.dataset.v === q.picked) b.classList.add("wrong");
+    });
+    const ok = q.picked === right;
+    feedback($("fb"), ok, ok ? "Goed zo!" : "Dit was het ritme.", explain(), () => { q = make(); render(); listen(); });
+  }
+  function answer(sig) {
+    if (q.done) return;
+    q.done = true;
+    q.picked = sig;
+    stats.record(sig === signature(q.bar));
+    result();
+  }
+  $("again").onclick = () => { audio(); listen(); };
+  seg($("level"), level, (v) => { level = v; save("rt-level", v); q = make(); render(); listen(); });
+  seg($("tempo"), String(tempo), (v) => { tempo = Number(v); save("rt-tempo", v); listen(); });
+  q = make(); render();
+</script>

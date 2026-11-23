@@ -1,0 +1,100 @@
+---
+import Base from "../layouts/Base.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const groups = [
+  {
+    title: "Noten lezen",
+    pages: [
+      { href: "notenbalk", kind: "Uitleg + oefenen", title: "Notenbalk lezen", text: "G- en F-sleutel, lijnen, ruimten en hulplijntjes. Klik een plek en hoor de toon." },
+      { href: "intervallen", kind: "Uitleg", title: "Intervallen", text: "De afstand tussen twee noten: tabel van alle intervallen en een speeltuin met geluid." },
+      { href: "intervallen-oefenen", kind: "Oefenen", title: "Intervallen oefenen", text: "Benoem een interval op de balk of op gehoor, of schrijf de bovenste noot op." },
+      { href: "dictee", kind: "Oefenen", title: "Melodisch dictee", text: "Luister naar een korte melodie en schrijf de noten op de balk." },
+    ],
+  },
+  {
+    title: "Toonsoorten en toonladders",
+    pages: [
+      { href: "voortekening", kind: "Uitleg", title: "Voortekening", text: "Van zeven mollen naar zeven kruisen. De twee regels om de toonsoort in vijf seconden te vinden." },
+      { href: "kwintencirkel", kind: "Uitleg + oefenen", title: "Kwintencirkel", text: "Klik een toonsoort: voortekening, parallel, dominant en subdominant." },
+      { href: "toonladders-bouwen", kind: "Uitleg", title: "Toonladders bouwen", text: "Het patroon van hele en halve tonen, uitgelegd op een klavier." },
+      { href: "toonladders-spelen", kind: "Oefenen", title: "Toonladders spelen", text: "Bouw de toonladder zelf: klik de noten op het klavier van laag naar hoog." },
+      { href: "toonladders-oefenen", kind: "Oefenen", title: "Toonladders oefenen", text: "Van voortekening naar toonladder en terug, met uitleg bij elk antwoord." },
+      { href: "toonladders-horen", kind: "Oefenen", title: "Toonladders horen", text: "Luister en kies: groot, klein natuurlijk, harmonisch of melodisch." },
+    ],
+  },
+  {
+    title: "Tijd en ritme",
+    pages: [
+      { href: "maatsoorten", kind: "Uitleg", title: "Maatsoorten", text: "2/4, 3/4, 4/4, 6/8 en meer: hoor hoe een maat telt en zich laat opdelen." },
+      { href: "ritme", kind: "Uitleg", title: "Ritme lezen", text: "Noten, rusten, punt en bindboog: wat elk teken betekent." },
+      { href: "ritme-herkennen", kind: "Oefenen", title: "Ritme herkennen", text: "Hoor een maat en kies het notenbeeld dat erbij hoort." },
+      { href: "ritme-volgorde", kind: "Oefenen", title: "Ritme volgorde", text: "Vier ritmes van één maat, in 2/4, 3/4 of 6/8: hoor de muziek en zet ze in de juiste volgorde." },
+      { href: "ritme-dictee", kind: "Oefenen", title: "Ritme dictee", text: "Luister naar een maat en schrijf het ritme op, met noten, rusten en bindbogen." },
+    ],
+  },
+];
+---
+<Base title="Tovertoon" description="Muziektheorie om mee te spelen: voortekening, toonladders en maatsoorten, met geluid en oefeningen.">
+  <main>
+    <header>
+      <h1>Muziektheorie om mee te spelen</h1>
+      <p class="lead">Korte, interactieve lessen met geluid en oefeningen. Je hoeft niets te installeren en niets in te vullen.</p>
+    </header>
+
+    {groups.map((g, gi) => (
+      <section aria-labelledby={`group-${gi}`}>
+        <h2 id={`group-${gi}`}>{g.title}</h2>
+        <ul class="cards">
+          {g.pages.map((p) => (
+            <li>
+              <a class="card" href={`${base}/${p.href}`}>
+                <span class="kind">{p.kind}</span>
+                <b>{p.title}</b>
+                <span class="text">{p.text}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+
+    <section class="about">
+      <h2>Handig om te weten</h2>
+      <ul>
+        <li>Noten staan als <b>Do Re Mi</b> of als letters (ABC). Je keuze wordt onthouden in je browser.</li>
+        <li>Geluid start pas na een klik, zoals browsers het vragen.</li>
+        <li>Een goede volgorde: Notenbalk, Intervallen, Voortekening, Kwintencirkel, Toonladders, dan Maatsoorten en Ritme.</li>
+      </ul>
+    </section>
+  </main>
+</Base>
+
+<style>
+  main { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+  h1 {
+    font: 800 clamp(34px, 7.5vw, 56px) / 1.03 var(--display);
+    letter-spacing: -0.02em;
+    margin: 6px 0 12px;
+    text-wrap: balance;
+  }
+  h2 { font: 800 24px / 1.15 var(--display); margin: 0 0 14px; }
+  .lead { font-size: 19px; color: var(--muted); max-width: 52ch; margin: 0; }
+  .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+  .card {
+    display: flex; flex-direction: column; gap: 8px; height: 100%; box-sizing: border-box;
+    text-decoration: none; color: inherit;
+    background: var(--card); border: 2px solid var(--ink); border-radius: 20px; padding: 20px;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .card:hover { background: var(--sun); color: #1d1b3a; transform: translateY(-2px); }
+  .card:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
+  .card b { font: 800 24px / 1.1 var(--display); }
+  .card .text { opacity: 0.85; }
+  .kind { font: 600 12px var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--violet); }
+  .card:hover .kind { color: #1d1b3a; }
+  .about { background: var(--card); border: 2px solid var(--ink); border-radius: 20px; padding: 20px; }
+  .about ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+</style>

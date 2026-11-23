@@ -1,0 +1,147 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/components.css";
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+---
+<Base title="Intervallen" description="Leer intervallen kennen: de afstand tussen twee noten. Uitleg, een tabel met alle intervallen en een speeltuin met geluid.">
+  <main>
+    <header>
+      <h1>Intervallen</h1>
+      <p class="muted">Een interval is de afstand tussen twee noten. Je telt hoeveel letters (lijnen en ruimten) de noten uit elkaar liggen: dat geeft de <b>grootte</b>. Je telt hoeveel halve tonen ertussen zitten: dat geeft de <b>soort</b>.</p>
+    </header>
+
+    <div class="grp"><span class="lab">Noten</span>
+      <div class="seg" id="names" role="group" aria-label="Notennamen">
+        <button type="button" data-n="do">Do Re Mi</button><button type="button" data-n="abc">ABC</button>
+      </div></div>
+
+    <section class="box" aria-labelledby="h-tabel">
+      <h2 id="h-tabel">Alle intervallen binnen een octaaf</h2>
+      <p class="muted">Klik op een rij: je ziet het interval boven Do4 en hoort het. De halve tonen tellen vanaf de onderste noot.</p>
+      <div class="tblwrap"><table id="tbl">
+        <thead><tr><th>Interval</th><th>Halve tonen</th><th>Voorbeeld vanaf Do</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="staffwrap"><svg id="tstaff" role="img" aria-label="Interval op de notenbalk"></svg></div>
+    </section>
+
+    <section class="box" aria-labelledby="h-regel">
+      <h2 id="h-regel">Twee stappen: grootte en soort</h2>
+      <ol class="plain">
+        <li><b>Grootte:</b> tel de letters inclusief beide noten. Do naar Sol is Do-Re-Mi-Fa-Sol: vijf letters, dus een kwint.</li>
+        <li><b>Soort:</b> tel de halve tonen. Een kwint met 7 halve tonen is <b>rein</b>. Eén halve toon minder is <b>verminderd</b>, één meer is <b>overmatig</b>.</li>
+        <li>Secunde, terts, sext en septiem zijn <b>groot</b> of <b>klein</b>. Prime, kwart, kwint en octaaf zijn <b>rein</b>.</li>
+      </ol>
+    </section>
+
+    <section class="box" aria-labelledby="h-spel">
+      <h2 id="h-spel">Speeltuin</h2>
+      <div class="bar">
+        <div class="grp"><span class="lab">Onderste noot</span><select id="root" aria-label="Onderste noot"></select></div>
+        <div class="grp"><span class="lab">Interval</span><select id="ival" aria-label="Interval"></select></div>
+        <button type="button" class="go" id="play">▶ Speel</button>
+        <div class="seg" id="pmode" role="group" aria-label="Samen of na elkaar">
+          <button type="button" data-v="mel">Na elkaar</button><button type="button" data-v="har">Samen</button>
+        </div>
+      </div>
+      <div class="staffwrap"><svg id="pstaff" role="img" aria-label="Gekozen interval"></svg></div>
+      <p id="pname" class="big" aria-live="polite"></p>
+    </section>
+
+    <section class="box next" aria-label="Verder oefenen">
+      <h2>Nu oefenen</h2>
+      <p class="muted">Benoem een interval op de balk of op gehoor, of schrijf de bovenste noot zelf op. Intervallen die je vaak mist komen vaker terug.</p>
+      <div class="bar"><a class="go" href={`${base}/intervallen-oefenen`}>Intervallen oefenen</a></div>
+    </section>
+  </main>
+</Base>
+
+<style is:global>
+  .big { font: 800 28px / 1.1 var(--display); min-height: 1.2em; text-align: center; }
+  #tbl tbody tr { cursor: pointer; }
+  #tbl tbody tr:hover { background: var(--hover); }
+  #tbl tbody tr.on { background: var(--sun); color: #1d1b3a; }
+  #tbl tbody tr.on td { border-color: #1d1b3a; }
+  ol.plain { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+
+<script>
+  import { $, nm, bindNames, pitch, letterOf, accText, playPitch, stopSound, store, save, seg, pitchName } from "../lib/music.js";
+  import { IV, byId, upper, pair } from "../lib/intervals.js";
+
+  const C4 = pitch("C", 4);
+  // ---- table ----
+  function tableRows() {
+    const tb = $("tbl").querySelector("tbody");
+    tb.innerHTML = "";
+    IV.forEach((iv) => {
+      const up = upper(C4, iv);
+      const tr = document.createElement("tr");
+      tr.dataset.id = iv.id;
+      tr.tabIndex = 0;
+      tr.setAttribute("role", "button");
+      tr.setAttribute("aria-label", `${iv.name}, speel`);
+      tr.innerHTML = `<td><b>${iv.name}</b></td><td>${iv.semis}</td><td>${up ? nm("C") + " – " + nm(letterOf(up) + accText(up.alter)) : "–"}</td>`;
+      tr.onclick = () => { showRow(iv); };
+      tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showRow(iv); } };
+      tb.append(tr);
+    });
+  }
+  let rowSel = byId.k3;
+  function showRow(iv) {
+    rowSel = iv;
+    $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === iv.id));
+    const up = upper(C4, iv);
+    if (!up) return;
+    pair($("tstaff"), C4, up);
+    stopSound();
+    playPitch(C4, 0, 1.1);
+    playPitch(up, 0.7, 1.4);
+  }
+
+  // ---- playground ----
+  const ROOTS = [];
+  for (const L of ["C", "D", "E", "F", "G", "A", "B"]) ROOTS.push(pitch(L, 4));
+  let pmode = store("iv-pmode", "mel", ["mel", "har"]);
+  function fillSelects() {
+    const r = $("root");
+    const cur = r.value || "0";
+    r.innerHTML = ROOTS.map((p, i) => `<option value="${i}">${nm(letterOf(p))}4</option>`).join("");
+    r.value = cur;
+    const v = $("ival");
+    const curv = v.value || "g3";
+    v.innerHTML = IV.map((iv) => `<option value="${iv.id}">${iv.name}</option>`).join("");
+    v.value = curv;
+  }
+  function playground(playSound) {
+    const low = ROOTS[+$("root").value];
+    const iv = byId[$("ival").value];
+    const up = upper(low, iv);
+    if (!up) {
+      $("pname").textContent = "Dit interval heeft hier een dubbel kruis of dubbele mol nodig. Kies een andere onderste noot.";
+      pair($("pstaff"), low, low);
+      return;
+    }
+    pair($("pstaff"), low, up);
+    $("pname").textContent = `${pitchName(low)} – ${pitchName(up)}: ${iv.name}`;
+    if (playSound) {
+      stopSound();
+      if (pmode === "har") { playPitch(low, 0, 1.6); playPitch(up, 0, 1.6); }
+      else { playPitch(low, 0, 1.1); playPitch(up, 0.7, 1.4); }
+    }
+  }
+  $("root").onchange = () => playground(false);
+  $("ival").onchange = () => playground(false);
+  $("play").onclick = () => playground(true);
+  seg($("pmode"), pmode, (v) => { pmode = v; save("iv-pmode", v); });
+
+
+  bindNames($("names"), () => { fillSelects(); tableRows(); showRowQuiet(); playground(false); });
+  function showRowQuiet() {
+    $("tbl").querySelectorAll("tbody tr").forEach((r) => r.classList.toggle("on", r.dataset.id === rowSel.id));
+    const up = upper(C4, rowSel);
+    if (up) pair($("tstaff"), C4, up);
+  }
+  fillSelects(); tableRows(); showRowQuiet(); playground(false);
+  if (document.fonts && document.fonts.load) document.fonts.load("72px 'Noto Music'", "\u{1D11E}").then(() => { showRowQuiet(); playground(false); }).catch(() => {});
+</script>
