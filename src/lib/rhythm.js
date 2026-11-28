@@ -92,11 +92,22 @@ export function drawRhythm(svg, events, opts = {}) {
     }
   });
   events.forEach((e, i) => {
-    const x = xs[i];
+    let x = xs[i];
     const g = el("g");
     if (e.rest) {
-      // a rest under a beam hangs high, free-standing rests sit on the line
-      restShape(g, x, inBeam.has(i) ? LINE - 26 : LINE, e.dur);
+      // A rest between two beamed notes hangs centred in the gap under the beam, midway between its
+      // neighbours. At the edge of a beam group, and free-standing, it sits on the line as usual.
+      let y = LINE;
+      if (inBeam.has(i)) {
+        const gr = groups.find((gg) => gg.includes(i));
+        const before = gr.filter((j) => j < i && !events[j].rest);
+        const after = gr.filter((j) => j > i && !events[j].rest);
+        if (before.length && after.length) {
+          x = (xs[before[before.length - 1]] + xs[after[0]]) / 2;
+          y = (top + 6 + LINE) / 2 + 3;
+        }
+      }
+      restShape(g, x, y, e.dur);
     } else {
       const hollow = e.dur >= 8;
       g.append(el("ellipse", { class: "head" + (hollow ? " hollow" : ""), cx: x, cy: LINE, rx: 9, ry: 6.4, transform: `rotate(-20 ${x} ${LINE})` }));
