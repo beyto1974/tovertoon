@@ -61,24 +61,27 @@ export function drawRhythm(svg, events, opts = {}) {
   });
   if (opts.labels) opts.labels.forEach((l) => svg.append(el("text", { x: xOf(l.on), y: 136, style: "font:600 13px var(--body);fill:var(--muted);text-anchor:middle" }, l.text)));
   if (opts.next != null && opts.next < total) svg.append(el("ellipse", { class: "slot on", cx: xOf(opts.next), cy: LINE, rx: 9, ry: 6.4 }));
+  // beam groups: consecutive short notes inside one beat. A short rest (eighth/sixteenth) inside the
+  // beat does not break the beam: the beam runs from the first to the last note, the rest hangs under it.
   const groups = [];
   events.forEach((e, i) => {
-    if (e.rest || beams(e.dur) === 0) return;
+    if (beams(e.dur) === 0) return;
     const last = groups[groups.length - 1];
     const prev = last && last[last.length - 1];
     if (last && prev === i - 1 && Math.floor(events[prev].on / bl) === Math.floor(e.on / bl)) last.push(i);
     else groups.push([i]);
   });
-  const inBeam = new Set(groups.filter((g) => g.length > 1).flat());
+  const inBeam = new Set(groups.filter((g) => g.filter((i) => !events[i].rest).length > 1).flat());
   const top = LINE - STEM;
   groups.forEach((gr) => {
-    if (gr.length < 2) return;
-    const a = xs[gr[0]] + 8.3, b = xs[gr[gr.length - 1]] + 8.3;
+    const notes = gr.filter((i) => !events[i].rest);
+    if (notes.length < 2) return;
+    const a = xs[notes[0]] + 8.3, b = xs[notes[notes.length - 1]] + 8.3;
     svg.append(el("rect", { class: "ink", x: a - 1.2, y: top, width: b - a + 2.4, height: 6 }));
     for (let k = 0; k < gr.length; ) {
-      if (beams(events[gr[k]].dur) < 2) { k++; continue; }
+      if (events[gr[k]].rest || beams(events[gr[k]].dur) < 2) { k++; continue; }
       let m = k;
-      while (m < gr.length && beams(events[gr[m]].dur) >= 2) m++;
+      while (m < gr.length && !events[gr[m]].rest && beams(events[gr[m]].dur) >= 2) m++;
       if (m - k >= 2) svg.append(el("rect", { class: "ink", x: xs[gr[k]] + 7.1, y: top + 10, width: xs[gr[m - 1]] - xs[gr[k]] + 2.4, height: 6 }));
       else {
         const left = k > 0;
@@ -92,7 +95,8 @@ export function drawRhythm(svg, events, opts = {}) {
     const x = xs[i];
     const g = el("g");
     if (e.rest) {
-      restShape(g, x, LINE, e.dur);
+      // a rest under a beam hangs high, free-standing rests sit on the line
+      restShape(g, x, inBeam.has(i) ? LINE - 26 : LINE, e.dur);
     } else {
       const hollow = e.dur >= 8;
       g.append(el("ellipse", { class: "head" + (hollow ? " hollow" : ""), cx: x, cy: LINE, rx: 9, ry: 6.4, transform: `rotate(-20 ${x} ${LINE})` }));
